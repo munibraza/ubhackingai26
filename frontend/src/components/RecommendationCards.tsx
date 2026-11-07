@@ -157,13 +157,26 @@ export const RecommendationCards: React.FC<RecommendationCardsProps> = ({ analys
         <div className="flex items-center space-x-2 shrink-0">
           {visual_observations.ai_provider === 'gemini-2.5-flash' ? (
             <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-extrabold uppercase tracking-wider bg-emerald-100 text-emerald-800 border border-emerald-300">
-              Gemini Vision AI
+              Gemini Multimodal AI
             </span>
           ) : (
             <EvidenceBadge type={visual_observations.is_simulated ? 'SIMULATED' : 'OBSERVED'} />
           )}
         </div>
       </div>
+
+      {/* Multimodal Telemetry Fusion Card (When Gemini synthesized Image + Sensors + Weather) */}
+      {visual_observations.ai_multimodal_synthesis && (
+        <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-emerald-50 via-teal-50 to-emerald-50/80 border border-emerald-200/90 shadow-sm text-xs text-slate-700">
+          <div className="flex items-center space-x-2 mb-2 font-bold text-emerald-950 uppercase tracking-wider text-[11px]">
+            <Sparkles className="w-4 h-4 text-emerald-600" />
+            <span>Gemini Multimodal Telemetry Synthesis (Image + Sensors + Weather)</span>
+          </div>
+          <p className="leading-relaxed text-slate-800 text-xs sm:text-sm font-medium">
+            {visual_observations.ai_multimodal_synthesis}
+          </p>
+        </div>
+      )}
 
       {/* The Three Core Recommendation Cards */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">

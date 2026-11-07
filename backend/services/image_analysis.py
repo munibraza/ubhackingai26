@@ -1,10 +1,9 @@
 import os
 import json
-import base64
-from typing import Optional
+from typing import Optional, Dict, Any
 from dotenv import load_dotenv
 from fastapi import UploadFile, HTTPException
-from backend.models import VisualObservation
+from backend.models import VisualObservation, SensorReading, WeatherSummary
 
 # Load environment variables
 load_dotenv()
@@ -26,7 +25,11 @@ class ImageAnalysisService:
         cls,
         file: Optional[UploadFile],
         demo_scenario: Optional[str] = None,
-        custom_api_key: Optional[str] = None
+        custom_api_key: Optional[str] = None,
+        sensor_data: Optional[SensorReading] = None,
+        weather_data: Optional[WeatherSummary] = None,
+        soil_condition: Optional[str] = None,
+        crop: Optional[str] = "tomato"
     ) -> VisualObservation:
         photo_uploaded = False
         filename = None
@@ -59,9 +62,18 @@ class ImageAnalysisService:
         # Check for Gemini API Key (either custom passed in or from environment)
         api_key = custom_api_key or os.getenv("GEMINI_API_KEY")
 
-        # 1. If user uploaded a photo and Gemini API key is provided, run real Gemini Vision!
+        # 1. If user uploaded a photo and Gemini API key is provided, run real Multimodal Gemini Vision!
         if photo_uploaded and file_bytes and api_key and (demo_scenario is None or demo_scenario == "auto" or demo_scenario == ""):
-            gemini_result = await cls._analyze_with_gemini(file_bytes, content_type, api_key, filename)
+            gemini_result = await cls._analyze_with_gemini(
+                image_bytes=file_bytes,
+                mime_type=content_type,
+                api_key=api_key,
+                filename=filename,
+                sensor_data=sensor_data,
+                weather_data=weather_data,
+                soil_condition=soil_condition,
+                crop=crop
+            )
             if gemini_result:
                 return gemini_result
 
@@ -146,11 +158,16 @@ class ImageAnalysisService:
         image_bytes: bytes,
         mime_type: str,
         api_key: str,
-        filename: Optional[str]
+        filename: Optional[str],
+        sensor_data: Optional[SensorReading] = None,
+        weather_data: Optional[WeatherSummary] = None,
+        soil_condition: Optional[str] = None,
+        crop: Optional[str] = "tomato"
     ) -> Optional[VisualObservation]:
         """
-        Calls Gemini 2.5 Flash multimodal vision API to extract plant type,
-        fruit ripeness stage, and visible leaf stress symptoms.
+        Calls Gemini 2.5 Flash multimodal vision API to fuse the visual image
+        WITH real environmental hardware telemetry (temp, humidity, ultrasonic distance)
+        and local weather forecasts.
         """
         try:
             from google import genai
@@ -158,28 +175,65 @@ class ImageAnalysisService:
 
             client = genai.Client(api_key=api_key)
 
-            prompt = """
-You are an expert agronomic computer vision specialist.
-Analyze this plant photo for the FolLand AI smart agriculture platform.
+            # Build rich environmental context block
+            sensor_text = "Not available"
+            if sensor_data:
+                sensor_text = (
+                    f"- Ambient Air Temperature: {sensor_data.air_temperature_c}°C (SHT30 sensor)\n"
+                    f"- Ambient Air Relative Humidity: {sensor_data.air_relative_humidity_pct}% (SHT30 sensor)\n"
+                    f"- Ultrasonic Distance to Canopy/Surface: {sensor_data.ultrasonic_distance_cm} cm (RCWL-1601 sensor)\n"
+                    f"- Estimated Canopy Height Proxy: {sensor_data.canopy_height_proxy_cm} cm\n"
+                    f"- Telemetry Status: {sensor_data.status} (Source: {sensor_data.source})"
+                )
+
+            weather_text = "Not available"
+            if weather_data:
+                weather_text = (
+                    f"- Location: {weather_data.location_name}\n"
+                    f"- Regional 2m Temp: {weather_data.temperature_c}°C, Relative Humidity: {weather_data.relative_humidity_pct}%\n"
+                    f"- Precipitation Past 24h: {weather_data.rain_last_24h_mm} mm\n"
+                    f"- Precipitation Forecast Next 24h: {weather_data.rain_next_24h_mm} mm\n"
+                    f"- Weather Condition: {weather_data.weather_description}"
+                )
+
+            soil_text = soil_condition.replace('_', ' ') if soil_condition else "Unknown / not checked"
+
+            prompt = f"""
+You are an expert agronomic scientist and multimodal AI assistant for the FolLand AI smart agriculture platform.
+
+You are evaluating a live agricultural/plant observation combining BOTH:
+1. The uploaded camera image
+2. Live hardware sensor telemetry from our Arduino METRO 328:
+{sensor_text}
+
+3. Regional weather data from Open-Meteo:
+{weather_text}
+
+4. User physical soil inspection at 5cm depth: {soil_text}
+5. Target crop/plant category: {crop}
+
+Analyze the image IN CONTEXT of these sensor measurements and weather forecast.
 
 Return a STRICT JSON object with the following fields:
-{
-  "plant_identified": "<identified plant or crop name, e.g. Tomato, Indoor Ficus, Pine, Succulent, etc.>",
+{{
+  "plant_identified": "<identified plant or crop name, e.g. Tomato, Pine, Ficus, Succulent, Pepper, etc.>",
   "is_tomato_or_fruit": <true or false>,
   "maturity_stage": "<one of: 'red', 'turning', 'green', 'uncertain', 'not_applicable'>",
   "stage_label": "<short descriptive title, e.g. 'Red / Ripe Fruit Detected' or 'Vegetative Foliage'>",
   "leaf_symptoms": "<one of: 'none', 'yellowing', 'browning_spots', 'wilting'>",
   "visual_confidence": "<one of: 'high', 'medium', 'low'>",
+  "multimodal_synthesis": "<2-3 sentences synthesizing how the image, ambient air temp ({sensor_data.air_temperature_c if sensor_data else 'N/A'}°C), air RH ({sensor_data.air_relative_humidity_pct if sensor_data else 'N/A'}%), and ultrasonic distance ({sensor_data.ultrasonic_distance_cm if sensor_data else 'N/A'} cm) correlate with plant growth and stress>",
   "detailed_description": "<concise 1-2 sentence description of visible colors, textures, and anomalies without hallucinating unseen traits>"
-}
+}}
 
-Scientific guardrail rules:
+Strict scientific guardrails:
 1. If fruit is predominantly red/orange-red: maturity_stage = 'red'.
-2. If fruit shows pink/orange breaker blush: maturity_stage = 'turning'.
+2. If fruit shows breaker/turning blush: maturity_stage = 'turning'.
 3. If fruit is fully green: maturity_stage = 'green'.
-4. If image is foliage only or non-fruiting plant: maturity_stage = 'not_applicable'.
-5. If image is blurry, occluded, or ambiguous: maturity_stage = 'uncertain' and confidence = 'low'.
-6. Do NOT claim elemental soil nutrient values (N, P, K) or soil moisture percentage.
+4. If image is foliage only: maturity_stage = 'not_applicable'.
+5. If image is blurry or ambiguous: maturity_stage = 'uncertain' and confidence = 'low'.
+6. CRITICAL: Remember that air relative humidity is NOT soil moisture. Do not claim soil is wet just because air RH is high.
+7. Do not claim elemental soil nutrient values (N, P, K) without a soil lab assay.
 """
 
             # Standardize mime_type
@@ -207,7 +261,6 @@ Scientific guardrail rules:
                 parsed = json.loads(response.text)
                 stage_raw = parsed.get("maturity_stage", "uncertain").lower()
                 if stage_raw not in ["red", "turning", "green", "uncertain"]:
-                    # Non-tomato or foliage-only
                     stage = "uncertain"
                 else:
                     stage = stage_raw
@@ -227,8 +280,9 @@ Scientific guardrail rules:
                     ai_provider="gemini-2.5-flash",
                     detected_plant=parsed.get("plant_identified"),
                     detected_leaf_symptoms=parsed.get("leaf_symptoms"),
-                    observation_notes=parsed.get("detailed_description", "Analyzed via Gemini 2.5 Flash Multimodal Vision.")
+                    ai_multimodal_synthesis=parsed.get("multimodal_synthesis"),
+                    observation_notes=parsed.get("detailed_description", "Analyzed via Gemini 2.5 Flash Multimodal Vision with live telemetry fusion.")
                 )
         except Exception as e:
-            print(f"Gemini Vision API call error: {e}")
+            print(f"Gemini Multimodal Vision API call error: {e}")
             return None

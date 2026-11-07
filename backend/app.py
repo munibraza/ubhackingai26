@@ -71,11 +71,24 @@ async def analyze_plant(
     longitude: Optional[float] = Form(None),
     gemini_api_key: Optional[str] = Form(None)
 ):
-    # 1. Process visual upload with Gemini Vision or demo scenario
+    # 1. Get latest sensor telemetry (simulated or live hardware feed)
+    sensor_data = SensorService.get_latest_reading()
+
+    # 2. Get local weather information
+    weather_data = await WeatherService.get_weather(
+        latitude=latitude,
+        longitude=longitude
+    )
+
+    # 3. Process visual upload + full multimodal telemetry fusion with Gemini Vision
     visual_obs = await ImageAnalysisService.process_upload(
         file=image,
         demo_scenario=demo_scenario,
-        custom_api_key=gemini_api_key
+        custom_api_key=gemini_api_key,
+        sensor_data=sensor_data,
+        weather_data=weather_data,
+        soil_condition=soil_condition,
+        crop=crop
     )
 
     # If Gemini detected specific leaf symptoms and user hadn't reported any, blend it in
@@ -87,15 +100,6 @@ async def analyze_plant(
     effective_variety = variety
     if not effective_variety and visual_obs.detected_plant:
         effective_variety = visual_obs.detected_plant
-
-    # 2. Get latest sensor data (simulated or live hardware feed)
-    sensor_data = SensorService.get_latest_reading()
-
-    # 3. Get weather information
-    weather_data = await WeatherService.get_weather(
-        latitude=latitude,
-        longitude=longitude
-    )
 
     # 4. Run deterministic decision engine
     decision_results = DecisionEngine.evaluate(

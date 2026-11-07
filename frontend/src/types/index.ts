@@ -45,6 +45,7 @@ export interface VisualObservation {
   ai_provider?: string | null;
   detected_plant?: string | null;
   detected_leaf_symptoms?: string | null;
+  ai_multimodal_synthesis?: string | null;
   observation_notes: string;
 }
 

@@ -43,6 +43,7 @@ class VisualObservation(BaseModel):
     ai_provider: Optional[str] = None  # "gemini-2.5-flash" or "demo_scenario" or None
     detected_plant: Optional[str] = None
     detected_leaf_symptoms: Optional[str] = None
+    ai_multimodal_synthesis: Optional[str] = None  # Comprehensive synthesis of image + sensor telemetry + weather
     observation_notes: str = "No automated AI inference claim made; observation determined by demo scenario selection."
 
 
