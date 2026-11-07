@@ -40,6 +40,9 @@ class VisualObservation(BaseModel):
     stage_label: str = "Visual analysis unavailable"
     visual_confidence: Literal["high", "medium", "low", "none"] = "none"
     is_simulated: bool = True
+    ai_provider: Optional[str] = None  # "gemini-2.5-flash" or "demo_scenario" or None
+    detected_plant: Optional[str] = None
+    detected_leaf_symptoms: Optional[str] = None
     observation_notes: str = "No automated AI inference claim made; observation determined by demo scenario selection."
 
 

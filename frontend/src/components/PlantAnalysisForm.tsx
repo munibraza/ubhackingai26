@@ -1,14 +1,15 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   Upload,
   Camera,
   X,
-  Sparkles,
   AlertCircle,
   ChevronRight,
   CheckCircle2,
   Leaf,
-  Droplet
+  Droplet,
+  Bot,
+  KeyRound
 } from 'lucide-react';
 
 interface PlantAnalysisFormProps {
@@ -23,15 +24,33 @@ export const PlantAnalysisForm: React.FC<PlantAnalysisFormProps> = ({ onSubmit, 
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [fileError, setFileError] = useState<string | null>(null);
 
-  const [crop] = useState('tomato');
+  const [crop, setCrop] = useState('tomato');
   const [variety, setVariety] = useState('');
   const [harvestGoal, setHarvestGoal] = useState<'eat_now' | 'store_transport'>('eat_now');
   const [soilCondition, setSoilCondition] = useState<'dry_at_5cm' | 'moist' | 'wet' | 'unknown'>('dry_at_5cm');
   const [leafSymptoms, setLeafSymptoms] = useState<'none' | 'yellowing' | 'browning_spots' | 'wilting'>('none');
-  const [demoScenario, setDemoScenario] = useState<string>('red'); // default to red so first run demonstrates complete path
+  
+  // Vision Mode: "gemini" vs "manual_demo"
+  const [visionMode, setVisionMode] = useState<'gemini' | 'manual_demo'>('gemini');
+  const [geminiApiKey, setGeminiApiKey] = useState<string>('');
+  const [showApiKeyInput, setShowApiKeyInput] = useState(false);
+  const [demoScenario, setDemoScenario] = useState<string>('red');
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
+
+  // Load saved API key from localStorage if available
+  useEffect(() => {
+    const saved = localStorage.getItem('folland_gemini_key');
+    if (saved) {
+      setGeminiApiKey(saved);
+    }
+  }, []);
+
+  const handleSaveApiKey = (key: string) => {
+    setGeminiApiKey(key);
+    localStorage.setItem('folland_gemini_key', key);
+  };
 
   // File handling
   const handleFile = (file: File) => {
@@ -80,8 +99,16 @@ export const PlantAnalysisForm: React.FC<PlantAnalysisFormProps> = ({ onSubmit, 
     data.append('harvest_goal', harvestGoal);
     data.append('soil_condition', soilCondition);
     data.append('leaf_symptoms', leafSymptoms);
-    if (demoScenario) {
-      data.append('demo_scenario', demoScenario);
+
+    if (visionMode === 'gemini') {
+      if (geminiApiKey.trim()) {
+        data.append('gemini_api_key', geminiApiKey.trim());
+      }
+      data.append('demo_scenario', 'auto');
+    } else {
+      if (demoScenario) {
+        data.append('demo_scenario', demoScenario);
+      }
     }
 
     onSubmit(data);
@@ -90,16 +117,24 @@ export const PlantAnalysisForm: React.FC<PlantAnalysisFormProps> = ({ onSubmit, 
   return (
     <form onSubmit={handleSubmit} className="bg-white rounded-2xl border border-cream-300/80 shadow-sm p-4 sm:p-6 transition-all">
       {/* Title */}
-      <div className="flex items-center justify-between mb-5">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-5 gap-2">
         <div>
           <h2 className="text-lg sm:text-xl font-extrabold text-slate-800 tracking-tight">Plant Analysis & Observation</h2>
           <p className="text-xs text-slate-500 mt-0.5">
-            Submit visual context and manual soil checks to evaluate crop recommendations.
+            Submit visual photo context and manual checks to evaluate evidence-backed crop recommendations.
           </p>
         </div>
-        <span className="px-2.5 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-forest-100 text-forest-800 border border-forest-200">
-          Tomato Pilot
-        </span>
+        <div className="flex items-center space-x-2">
+          <select
+            value={crop}
+            onChange={(e) => setCrop(e.target.value)}
+            className="px-2.5 py-1 rounded-xl text-xs font-bold uppercase tracking-wider bg-forest-100 text-forest-800 border border-forest-200 focus:outline-none focus:ring-1 focus:ring-forest-600"
+          >
+            <option value="tomato">Tomato (Pilot Crop)</option>
+            <option value="potted_plant">Indoor Foliage / Potted Plant (SU Campus)</option>
+            <option value="evergreen">Evergreen Pine / Shrub (UB North Outdoor)</option>
+          </select>
+        </div>
       </div>
 
       {/* Error banner */}
@@ -199,52 +234,130 @@ export const PlantAnalysisForm: React.FC<PlantAnalysisFormProps> = ({ onSubmit, 
         )}
       </div>
 
-      {/* 2. DEMO SCENARIO SELECTOR (CRITICAL HACKATHON CAPABILITY) */}
-      <div className="mb-6 p-4 rounded-2xl bg-purple-50/70 border-2 border-purple-200/90 shadow-sm">
-        <div className="flex items-start justify-between mb-2">
+      {/* 2. VISION ANALYSIS ENGINE: GEMINI AI vs DEMO SCENARIO */}
+      <div className="mb-6 p-4 rounded-2xl bg-gradient-to-br from-purple-50/90 to-indigo-50/80 border-2 border-purple-200 shadow-sm">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
           <div className="flex items-center space-x-2">
-            <Sparkles className="w-4 h-4 text-purple-700" />
+            <Bot className="w-4 h-4 text-purple-700" />
             <span className="text-xs font-extrabold uppercase tracking-wider text-purple-950">
-              Demo Ripeness Scenario (Vision Model Simulator)
+              Vision Analysis Engine
             </span>
           </div>
-          <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-purple-200 text-purple-800">
-            Rule Simulator
-          </span>
-        </div>
-        <p className="text-xs text-purple-900/80 mb-3">
-          Since the computer vision model is not connected yet, select a maturity state below to evaluate the deterministic agronomic rules. <span className="font-semibold underline">The system does not claim to infer this from the image.</span>
-        </p>
 
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-          {[
-            { id: 'red', label: 'Red Tomato', sub: 'Likely Ripe', color: 'border-red-400 bg-red-50 text-red-900' },
-            { id: 'turning', label: 'Turning Tomato', sub: 'Breaker Stage', color: 'border-amber-400 bg-amber-50 text-amber-900' },
-            { id: 'green', label: 'Green Tomato', sub: 'Immature Stage', color: 'border-emerald-400 bg-emerald-50 text-emerald-900' },
-            { id: 'uncertain', label: 'Uncertain / Unknown', sub: 'Occluded / Blurry', color: 'border-slate-300 bg-slate-100 text-slate-800' },
-          ].map((item) => (
+          {/* Mode Switcher Tabs */}
+          <div className="flex p-0.5 rounded-xl bg-purple-200/70 border border-purple-300 text-xs font-semibold self-start sm:self-auto">
             <button
-              key={item.id}
               type="button"
-              onClick={() => setDemoScenario(item.id)}
-              className={`p-2.5 rounded-xl border text-left transition relative flex flex-col justify-between ${
-                demoScenario === item.id
-                  ? `${item.color} ring-2 ring-purple-600 shadow-sm font-bold`
-                  : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
+              onClick={() => setVisionMode('gemini')}
+              className={`px-3 py-1 rounded-lg transition ${
+                visionMode === 'gemini'
+                  ? 'bg-purple-900 text-white shadow-sm'
+                  : 'text-purple-900 hover:bg-purple-300/50'
               }`}
             >
-              <div>
-                <span className="block text-xs font-bold">{item.label}</span>
-                <span className="block text-[10px] text-slate-500 mt-0.5">{item.sub}</span>
-              </div>
-              {demoScenario === item.id && (
-                <div className="self-end mt-1">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-purple-700" />
-                </div>
-              )}
+              Gemini Vision AI (Live)
             </button>
-          ))}
+            <button
+              type="button"
+              onClick={() => setVisionMode('manual_demo')}
+              className={`px-3 py-1 rounded-lg transition ${
+                visionMode === 'manual_demo'
+                  ? 'bg-purple-900 text-white shadow-sm'
+                  : 'text-purple-900 hover:bg-purple-300/50'
+              }`}
+            >
+              Manual Demo Scenarios
+            </button>
+          </div>
         </div>
+
+        {visionMode === 'gemini' ? (
+          <div className="space-y-3">
+            <p className="text-xs text-purple-900/90 leading-relaxed">
+              <strong>Gemini 2.5 Flash Multimodal Vision:</strong> Upload a tomato fruit or plant photo. Gemini will directly analyze visual ripeness color break, foliar yellowing/spots, and leaf turgor in real-time.
+            </p>
+
+            {/* API Key configuration bar */}
+            <div className="p-3 rounded-xl bg-white/90 border border-purple-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+              <div className="flex items-center space-x-2">
+                <KeyRound className="w-4 h-4 text-purple-600 shrink-0" />
+                <span className="font-medium text-slate-700">
+                  {geminiApiKey ? (
+                    <span className="text-emerald-700 font-bold flex items-center space-x-1">
+                      <CheckCircle2 className="w-3.5 h-3.5 inline mr-1" />
+                      Gemini API Key Connected (••••{geminiApiKey.slice(-4)})
+                    </span>
+                  ) : (
+                    <span className="text-amber-800 font-semibold">
+                      Gemini API Key: Not set (Enter key to enable real-time vision)
+                    </span>
+                  )}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowApiKeyInput(!showApiKeyInput)}
+                className="text-purple-700 hover:text-purple-900 font-bold underline text-[11px] self-start sm:self-auto"
+              >
+                {showApiKeyInput ? 'Hide Key Input' : geminiApiKey ? 'Change Key' : 'Enter API Key'}
+              </button>
+            </div>
+
+            {showApiKeyInput && (
+              <div className="p-3 rounded-xl bg-purple-100/60 border border-purple-200 flex items-center space-x-2 text-xs">
+                <input
+                  type="password"
+                  placeholder="Paste your Google AI Studio Gemini API Key (AIzaSy...)"
+                  value={geminiApiKey}
+                  onChange={(e) => handleSaveApiKey(e.target.value)}
+                  className="flex-1 px-3 py-1.5 rounded-lg border border-purple-300 focus:outline-none focus:ring-2 focus:ring-purple-600 bg-white text-xs font-mono"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowApiKeyInput(false)}
+                  className="px-3 py-1.5 bg-purple-900 text-white rounded-lg font-bold hover:bg-purple-800"
+                >
+                  Save
+                </button>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div>
+            <p className="text-xs text-purple-900/80 mb-3">
+              Select a fixed simulated maturity state to evaluate the deterministic agronomic rules without calling an external AI model:
+            </p>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              {[
+                { id: 'red', label: 'Red Tomato', sub: 'Likely Ripe', color: 'border-red-400 bg-red-50 text-red-900' },
+                { id: 'turning', label: 'Turning Tomato', sub: 'Breaker Stage', color: 'border-amber-400 bg-amber-50 text-amber-900' },
+                { id: 'green', label: 'Green Tomato', sub: 'Immature Stage', color: 'border-emerald-400 bg-emerald-50 text-emerald-900' },
+                { id: 'uncertain', label: 'Uncertain / Unknown', sub: 'Occluded / Blurry', color: 'border-slate-300 bg-slate-100 text-slate-800' },
+              ].map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => setDemoScenario(item.id)}
+                  className={`p-2.5 rounded-xl border text-left transition relative flex flex-col justify-between ${
+                    demoScenario === item.id
+                      ? `${item.color} ring-2 ring-purple-600 shadow-sm font-bold`
+                      : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
+                  }`}
+                >
+                  <div>
+                    <span className="block text-xs font-bold">{item.label}</span>
+                    <span className="block text-[10px] text-slate-500 mt-0.5">{item.sub}</span>
+                  </div>
+                  {demoScenario === item.id && (
+                    <div className="self-end mt-1">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-purple-700" />
+                    </div>
+                  )}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* 3. Crop Details & Context Form */}
@@ -252,13 +365,13 @@ export const PlantAnalysisForm: React.FC<PlantAnalysisFormProps> = ({ onSubmit, 
         {/* Variety / Cultivar */}
         <div>
           <label className="block text-xs font-bold text-slate-700 mb-1.5">
-            Tomato Variety / Cultivar <span className="text-slate-400 font-normal">(Optional)</span>
+            Plant Variety / Cultivar <span className="text-slate-400 font-normal">(Optional or auto-detected by Gemini)</span>
           </label>
           <input
             type="text"
             value={variety}
             onChange={(e) => setVariety(e.target.value)}
-            placeholder="e.g. Roma, Beefsteak, Cherry, Early Girl"
+            placeholder="e.g. Roma, Beefsteak, Cherry, Ficus, Pine"
             className="w-full px-3 py-2 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-forest-600 text-xs"
           />
         </div>
@@ -371,11 +484,11 @@ export const PlantAnalysisForm: React.FC<PlantAnalysisFormProps> = ({ onSubmit, 
         {loading ? (
           <>
             <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-            <span>Evaluating Agronomic Rules...</span>
+            <span>{visionMode === 'gemini' && selectedFile ? 'Analyzing Photo with Gemini Vision...' : 'Evaluating Agronomic Rules...'}</span>
           </>
         ) : (
           <>
-            <span>Analyze Plant & Generate Advisories</span>
+            <span>{visionMode === 'gemini' && selectedFile ? 'Analyze Photo with Gemini AI' : 'Analyze Plant & Generate Advisories'}</span>
             <ChevronRight className="w-4 h-4 text-lime-bright" />
           </>
         )}

@@ -42,6 +42,9 @@ export interface VisualObservation {
   stage_label: string;
   visual_confidence: 'high' | 'medium' | 'low' | 'none';
   is_simulated: boolean;
+  ai_provider?: string | null;
+  detected_plant?: string | null;
+  detected_leaf_symptoms?: string | null;
   observation_notes: string;
 }
 

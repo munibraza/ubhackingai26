@@ -136,18 +136,33 @@ export const RecommendationCards: React.FC<RecommendationCardsProps> = ({ analys
       {/* Visual Observation Verification Banner */}
       <div className="p-4 rounded-2xl bg-white border border-cream-300 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
         <div className="flex items-center space-x-3">
-          <div className="p-2 rounded-xl bg-purple-100 text-purple-700">
+          <div className={`p-2 rounded-xl ${visual_observations.ai_provider === 'gemini-2.5-flash' ? 'bg-emerald-100 text-emerald-800' : 'bg-purple-100 text-purple-700'}`}>
             <Sparkles className="w-5 h-5" />
           </div>
           <div>
-            <div className="flex items-center space-x-2">
+            <div className="flex flex-wrap items-center gap-2">
               <span className="font-bold text-slate-800 text-sm">Visual Stage Evaluation:</span>
-              <span className="font-extrabold text-purple-800 text-sm">{visual_observations.stage_label}</span>
+              <span className={`font-extrabold text-sm ${visual_observations.ai_provider === 'gemini-2.5-flash' ? 'text-emerald-800' : 'text-purple-800'}`}>
+                {visual_observations.stage_label}
+              </span>
+              {visual_observations.detected_plant && (
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 border border-emerald-300">
+                  Identified: {visual_observations.detected_plant}
+                </span>
+              )}
             </div>
-            <p className="text-xs text-slate-500 mt-0.5">{visual_observations.observation_notes}</p>
+            <p className="text-xs text-slate-500 mt-1">{visual_observations.observation_notes}</p>
           </div>
         </div>
-        <EvidenceBadge type={visual_observations.is_simulated ? 'SIMULATED' : 'OBSERVED'} />
+        <div className="flex items-center space-x-2 shrink-0">
+          {visual_observations.ai_provider === 'gemini-2.5-flash' ? (
+            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-extrabold uppercase tracking-wider bg-emerald-100 text-emerald-800 border border-emerald-300">
+              Gemini Vision AI
+            </span>
+          ) : (
+            <EvidenceBadge type={visual_observations.is_simulated ? 'SIMULATED' : 'OBSERVED'} />
+          )}
+        </div>
       </div>
 
       {/* The Three Core Recommendation Cards */}
