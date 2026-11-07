@@ -42,7 +42,9 @@ class VisualObservation(BaseModel):
     is_simulated: bool = True
     ai_provider: Optional[str] = None  # "gemini-2.5-flash" or "demo_scenario" or None
     detected_plant: Optional[str] = None
+    detected_leaf_color: Optional[str] = None  # e.g. "Dark vibrant green", "Pale yellow (chlorosis)", "Brown necrotic tips"
     detected_leaf_symptoms: Optional[str] = None
+    leaf_condition_summary: Optional[str] = None  # Plain language leaf health summary
     ai_multimodal_synthesis: Optional[str] = None  # Comprehensive synthesis of image + sensor telemetry + weather
     observation_notes: str = "No automated AI inference claim made; observation determined by demo scenario selection."
 

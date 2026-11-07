@@ -91,9 +91,11 @@ async def analyze_plant(
         crop=crop
     )
 
-    # If Gemini detected specific leaf symptoms and user hadn't reported any, blend it in
+    # If Gemini analyzed the image, its automated foliage detection takes precedence over manual user selection
     effective_leaf_symptoms = leaf_symptoms
-    if (not leaf_symptoms or leaf_symptoms == "none") and visual_obs.detected_leaf_symptoms:
+    if visual_obs.ai_provider == "gemini-2.5-flash" and visual_obs.detected_leaf_symptoms:
+        effective_leaf_symptoms = visual_obs.detected_leaf_symptoms
+    elif (not leaf_symptoms or leaf_symptoms == "none") and visual_obs.detected_leaf_symptoms:
         effective_leaf_symptoms = visual_obs.detected_leaf_symptoms
 
     # If Gemini identified the plant, enrich variety or crop context if not set

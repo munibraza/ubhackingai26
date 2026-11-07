@@ -445,34 +445,53 @@ export const PlantAnalysisForm: React.FC<PlantAnalysisFormProps> = ({ onSubmit, 
         </div>
       </div>
 
-      {/* 5. Visible Leaf Symptoms (Penn State Extension Differential) */}
+      {/* 5. Visible Leaf Symptoms (Automated in Gemini AI Mode) */}
       <div className="mb-6">
-        <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2 flex items-center space-x-1.5">
-          <Leaf className="w-4 h-4 text-emerald-600" />
-          <span>3. Foliage / Leaf Observations (Optional Stress Check)</span>
-        </label>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
-          {[
-            { id: 'none', label: 'No Symptoms', desc: 'Healthy green leaves' },
-            { id: 'yellowing', label: 'Yellowing', desc: 'Foliar chlorosis' },
-            { id: 'browning_spots', label: 'Brown Spots', desc: 'Necrotic lesions' },
-            { id: 'wilting', label: 'Wilting', desc: 'Loss of leaf turgor' },
-          ].map((item) => (
-            <button
-              key={item.id}
-              type="button"
-              onClick={() => setLeafSymptoms(item.id as any)}
-              className={`p-2.5 rounded-xl border text-left transition ${
-                leafSymptoms === item.id
-                  ? 'bg-emerald-50 border-emerald-600 ring-2 ring-emerald-600 text-emerald-950 font-bold shadow-sm'
-                  : 'bg-cream-50/60 border-cream-300 text-slate-700 hover:bg-cream-100'
-              }`}
-            >
-              <div className="font-bold text-xs">{item.label}</div>
-              <div className="text-[10px] text-slate-500 mt-0.5">{item.desc}</div>
-            </button>
-          ))}
+        <div className="flex items-center justify-between mb-2">
+          <label className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center space-x-1.5">
+            <Leaf className="w-4 h-4 text-emerald-600" />
+            <span>3. Foliage & Leaf Stress Observation</span>
+          </label>
+          {visionMode === 'gemini' ? (
+            <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full border border-emerald-300">
+              ⚡ Automated by Gemini Vision
+            </span>
+          ) : (
+            <span className="text-[10px] text-slate-500">Manual Scenario Selection</span>
+          )}
         </div>
+
+        {visionMode === 'gemini' ? (
+          <div className="p-3 rounded-xl bg-emerald-50/70 border border-emerald-200 text-xs text-emerald-950 flex items-start space-x-2">
+            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+            <p className="leading-snug">
+              <strong>Automated Leaf Color & Condition Analysis:</strong> You do not need to diagnose the leaf yourself! Gemini Vision AI will automatically inspect the uploaded photo for foliage color (vibrant green, pale chlorosis, yellowing, necrotic spotting) and leaf turgor (healthy vs. wilting).
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+            {[
+              { id: 'none', label: 'No Symptoms', desc: 'Healthy green leaves' },
+              { id: 'yellowing', label: 'Yellowing', desc: 'Foliar chlorosis' },
+              { id: 'browning_spots', label: 'Brown Spots', desc: 'Necrotic lesions' },
+              { id: 'wilting', label: 'Wilting', desc: 'Loss of leaf turgor' },
+            ].map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => setLeafSymptoms(item.id as any)}
+                className={`p-2.5 rounded-xl border text-left transition ${
+                  leafSymptoms === item.id
+                    ? 'bg-emerald-50 border-emerald-600 ring-2 ring-emerald-600 text-emerald-950 font-bold shadow-sm'
+                    : 'bg-cream-50/60 border-cream-300 text-slate-700 hover:bg-cream-100'
+                }`}
+              >
+                <div className="font-bold text-xs">{item.label}</div>
+                <div className="text-[10px] text-slate-500 mt-0.5">{item.desc}</div>
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Submit Button */}

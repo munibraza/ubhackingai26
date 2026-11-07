@@ -150,7 +150,17 @@ export const RecommendationCards: React.FC<RecommendationCardsProps> = ({ analys
                   Identified: {visual_observations.detected_plant}
                 </span>
               )}
+              {visual_observations.detected_leaf_color && (
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-teal-100 text-teal-800 border border-teal-300">
+                  Foliage: {visual_observations.detected_leaf_color}
+                </span>
+              )}
             </div>
+            {visual_observations.leaf_condition_summary && (
+              <p className="text-xs text-emerald-950 font-medium mt-1 bg-emerald-50/80 p-2 rounded-lg border border-emerald-200/60">
+                🌿 <strong>Automated Leaf Health:</strong> {visual_observations.leaf_condition_summary}
+              </p>
+            )}
             <p className="text-xs text-slate-500 mt-1">{visual_observations.observation_notes}</p>
           </div>
         </div>

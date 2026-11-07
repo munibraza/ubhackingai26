@@ -213,16 +213,22 @@ You are evaluating a live agricultural/plant observation combining BOTH:
 5. Target crop/plant category: {crop}
 
 Analyze the image IN CONTEXT of these sensor measurements and weather forecast.
+Pay SPECIAL ATTENTION to:
+1. Foliage/leaf color: Analyze whether leaves are deep vibrant green, pale light green, yellowing/chlorotic, brown-tipped, necrotic, or purple-tinged.
+2. Foliage/leaf turgor & condition: Analyze whether leaves are firm and erect, curled, spotted, or wilting.
+3. Fruit maturity (if fruit present): Assess color break and ripeness stage.
 
 Return a STRICT JSON object with the following fields:
 {{
-  "plant_identified": "<identified plant or crop name, e.g. Tomato, Pine, Ficus, Succulent, Pepper, etc.>",
+  "plant_identified": "<identified plant or crop name, e.g. Tomato, Pine, Ficus, Succulent, Boxwood, Pepper, etc.>",
   "is_tomato_or_fruit": <true or false>,
   "maturity_stage": "<one of: 'red', 'turning', 'green', 'uncertain', 'not_applicable'>",
   "stage_label": "<short descriptive title, e.g. 'Red / Ripe Fruit Detected' or 'Vegetative Foliage'>",
+  "leaf_color": "<specific observed foliage color, e.g. 'Deep healthy green', 'Pale yellow chlorosis on lower leaves', 'Brown necrotic margins', or 'Mottled green'>",
   "leaf_symptoms": "<one of: 'none', 'yellowing', 'browning_spots', 'wilting'>",
+  "leaf_condition_summary": "<1-2 sentences strictly analyzing the condition, health, turgor, and color of the foliage>",
   "visual_confidence": "<one of: 'high', 'medium', 'low'>",
-  "multimodal_synthesis": "<2-3 sentences synthesizing how the image, ambient air temp ({sensor_data.air_temperature_c if sensor_data else 'N/A'}°C), air RH ({sensor_data.air_relative_humidity_pct if sensor_data else 'N/A'}%), and ultrasonic distance ({sensor_data.ultrasonic_distance_cm if sensor_data else 'N/A'} cm) correlate with plant growth and stress>",
+  "multimodal_synthesis": "<2-3 sentences synthesizing how the visual leaf color/condition, ambient air temp ({sensor_data.air_temperature_c if sensor_data else 'N/A'}°C), air RH ({sensor_data.air_relative_humidity_pct if sensor_data else 'N/A'}%), and ultrasonic distance ({sensor_data.ultrasonic_distance_cm if sensor_data else 'N/A'} cm) correlate with plant growth and stress>",
   "detailed_description": "<concise 1-2 sentence description of visible colors, textures, and anomalies without hallucinating unseen traits>"
 }}
 
@@ -231,9 +237,12 @@ Strict scientific guardrails:
 2. If fruit shows breaker/turning blush: maturity_stage = 'turning'.
 3. If fruit is fully green: maturity_stage = 'green'.
 4. If image is foliage only: maturity_stage = 'not_applicable'.
-5. If image is blurry or ambiguous: maturity_stage = 'uncertain' and confidence = 'low'.
-6. CRITICAL: Remember that air relative humidity is NOT soil moisture. Do not claim soil is wet just because air RH is high.
-7. Do not claim elemental soil nutrient values (N, P, K) without a soil lab assay.
+5. If leaves show yellowing/chlorosis: leaf_symptoms = 'yellowing'.
+6. If leaves show necrotic spots or brown edges: leaf_symptoms = 'browning_spots'.
+7. If leaves appear droopy/limp: leaf_symptoms = 'wilting'.
+8. If leaves are healthy green with normal turgor: leaf_symptoms = 'none'.
+9. CRITICAL: Remember that air relative humidity is NOT soil moisture. Do not claim soil is wet just because air RH is high.
+10. Do not claim elemental soil nutrient values (N, P, K) without a soil lab assay.
 """
 
             # Standardize mime_type
@@ -268,6 +277,10 @@ Strict scientific guardrails:
                 confidence_raw = parsed.get("visual_confidence", "medium").lower()
                 confidence = confidence_raw if confidence_raw in ["high", "medium", "low"] else "medium"
 
+                leaf_symp_raw = parsed.get("leaf_symptoms", "none").lower()
+                if leaf_symp_raw not in ["none", "yellowing", "browning_spots", "wilting"]:
+                    leaf_symp_raw = "none"
+
                 return VisualObservation(
                     photo_uploaded=True,
                     filename=filename,
@@ -279,7 +292,9 @@ Strict scientific guardrails:
                     is_simulated=False,
                     ai_provider="gemini-2.5-flash",
                     detected_plant=parsed.get("plant_identified"),
-                    detected_leaf_symptoms=parsed.get("leaf_symptoms"),
+                    detected_leaf_color=parsed.get("leaf_color"),
+                    detected_leaf_symptoms=leaf_symp_raw,
+                    leaf_condition_summary=parsed.get("leaf_condition_summary"),
                     ai_multimodal_synthesis=parsed.get("multimodal_synthesis"),
                     observation_notes=parsed.get("detailed_description", "Analyzed via Gemini 2.5 Flash Multimodal Vision with live telemetry fusion.")
                 )
