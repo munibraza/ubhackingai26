@@ -1,4 +1,4 @@
-# CropSense AI — Multimodal Plant Monitoring Assistant
+# FolLand AI — Multimodal Plant Monitoring Assistant
 
 **Status:** Hackathon brainstorming + implementation-ready MVP specification (not a validated agronomic diagnostic system)  
 **Updated:** November 7, 2026  
@@ -7,7 +7,7 @@
 **Initial crop:** Tomato (recommended pilot; expandable later)  
 **Team:** Assign owners below
 
-> **One-line pitch:** CropSense AI combines an iPhone plant photo, live air-temperature/humidity and ultrasonic distance from an Arduino-compatible board, local weather, and cited agronomic knowledge to provide transparent harvest, watering, and fertilization advisories.
+> **One-line pitch:** FolLand AI combines an iPhone plant photo, live air-temperature/humidity and ultrasonic distance from an Arduino-compatible board, local weather, and cited agronomic knowledge to provide transparent harvest, watering, and fertilization advisories.
 
 ## 0. Executive decision — what the team should build now
 
