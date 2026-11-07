@@ -1,11 +1,39 @@
-# FolLand AI — Multimodal Plant Monitoring Assistant
+# CropSense AI — Multimodal Plant Monitoring Assistant
 
-**Status:** Hackathon brainstorming / proposed MVP (not a validated agronomic diagnostic system)  
-**Last researched:** November 7, 2026  
-**Team:** TBD  
-**Initial crop:** Tomato (recommended pilot; expandable to other crops)
+**Status:** Hackathon brainstorming + implementation-ready MVP specification (not a validated agronomic diagnostic system)  
+**Updated:** November 7, 2026  
+**Hardware now available:** Adafruit METRO 328, full-size breadboard, SHT30, RCWL-1601, iPhone camera, laptop/Mac  
+**Target form factor:** Mobile-responsive **web application**, accessed through iPhone Safari  
+**Initial crop:** Tomato (recommended pilot; expandable later)  
+**Team:** Assign owners below
 
-> **One-line pitch:** Use a phone photo, real-time air temperature/humidity, ultrasonic distance, and local weather plus cited agricultural guidance to explain whether a crop appears ready to harvest and what checks to make before watering or fertilizing.
+> **One-line pitch:** CropSense AI combines an iPhone plant photo, live air-temperature/humidity and ultrasonic distance from an Arduino-compatible board, local weather, and cited agronomic knowledge to provide transparent harvest, watering, and fertilization advisories.
+
+## 0. Executive decision — what the team should build now
+
+**Build a single-crop tomato MVP, not an all-crop diagnosis platform.** Demonstrate one full path from a photo and real/clearly labeled simulated sensor values to three recommendation cards, each showing the supporting evidence and what was *not measured*.
+
+**Final recommended implementation:**
+
+- **iPhone:** Safari web page captures/uploads a fruit image (optional separate leaf photo).
+- **Hardware:** SHT30 and RCWL-1601 connect through a **breadboard to the available Adafruit METRO 328**.
+- **Transport:** METRO 328 sends structured serial messages over **USB to a Mac/laptop**; it has **no onboard Wi-Fi**. Do not attempt to run AI inference, web hosting, or direct iPhone networking on the 2 KB RAM microcontroller.
+- **Python service:** `pyserial` reads USB messages; **FastAPI** handles sensor state, photo uploads, weather, image analysis, and deterministic decision rules.
+- **Frontend:** **React + Vite + Tailwind CSS** for a polished mobile web dashboard. If integration is running behind schedule, **Streamlit** is the fallback for speed.
+- **Data:** Open-Meteo forecasts and a small manually curated, cited tomato-guidance file; avoid unrestricted live web scraping.
+- **Presentation:** Harvest assessment is the primary live AI demonstration. Watering and fertilization are cautious advisories, not direct diagnoses.
+
+### First 60–90 minutes — do these in order
+
+1. **Identify sensor pin labels** and photograph both sides of the SHT30 and RCWL-1601. The RCWL-1601 comes in **TRIG/ECHO** and **I²C** variants; wiring is not interchangeable.
+2. Connect METRO 328 to the Mac using a **micro-USB data cable**. In Arduino IDE select **Board → Arduino Uno**, select the detected serial port, and upload **File → Examples → 01.Basics → Blink**.
+3. Install/test the **SHT30** with compatible breakout voltage and I²C wiring; verify real °C/RH readings over Serial Monitor.
+4. Test the RCWL-1601 **alone**, using the correct wiring for its pin labels, before connecting both sensors.
+5. Freeze a shared **sensor JSON schema** and use sample/mock messages so the frontend/backend can begin in parallel.
+6. Build iPhone photo upload and display three recommendation cards; integrate real serial data when ready.
+7. Test green/turning/red tomato photos and one blurry/out-of-scope photo. Record a backup demo.
+
+**Not yet verified:** the exact SHT30 breakout board, the RCWL-1601 interface variant, presence of a compatible USB data cable/jumper wires, and whether the Mac and iPhone can share a reachable network. These affect exact wiring and deployment, but do not block the rest of the MVP.
 
 ## 1. Problem and opportunity
 
@@ -31,22 +59,159 @@ The result is a practical **decision-support assistant**, not an automated diagn
 
 ## 2. Hardware inventory and what it *actually* measures
 
-| Component | Interface/measurement | Verified specification | Product role | Does **not** measure |
+| Component | Available? | Interface / specifications | Role in product | Limitation |
 |---|---|---|---|---|
-| **RCWL-1601** ultrasonic range finder | Trigger/echo pulse; line-of-sight distance | 3.0–5.5 V; nominal distance about **2–450 cm**; vendor advises **10–250 cm** for best results; HC-SR04-compatible interface | Optional canopy-height / plant-growth trend **only if** mounted in a repeatable fixed position with a known reference | Nutrients, water in soil, fruit ripeness, health, direct plant height from arbitrary handheld angle |
-| **SHT30** (SHT3x family) | I²C; ambient temperature and relative humidity | Sensor supply 2.15–5.5 V; typical humidity accuracy **±2 percentage points RH**; typical temperature accuracy **±0.2°C** (specified conditions) | Microclimate context; trends and alerts | Soil moisture, pH, N-P-K, water stress with certainty |
-| **iPhone camera** | JPEG/HEIC image via browser upload | Depends on iPhone model and lighting; no fixed precision claimed | Visible fruit/leaf inspection, approximate maturity stage and visible anomalies | Root health, nutrients or soil moisture directly |
-| **Microcontroller** (not listed as available) | ESP32 / Raspberry Pi Pico / Arduino or another compatible board | **To be confirmed** | Required for convenient SHT30 and RCWL-1601 digital readout; send JSON via USB/BLE/Wi-Fi | — |
+| **Adafruit METRO 328** | **Yes** | ATmega328P, 16 MHz, 32 KB flash, 2 KB RAM, Arduino Uno compatible; 5 V logic by default; CP2104 USB-to-serial interface | Poll sensors, serialize measurements over USB | No built-in Wi-Fi/Bluetooth; cannot run the AI model |
+| **Full-size breadboard** | **Yes** | Passive prototyping board | Connect sensor pins, power rails, and ground without soldering if sensors have suitable headers | Does not provide power or process readings |
+| **SHT30** | **Yes** | I²C air temperature + relative humidity; bare SHT30 supply range 2.15–5.5 V; nominal typical accuracy about ±0.2 °C / ±2 percentage points RH under specified conditions | Ambient microclimate input | **Not** soil-moisture or nutrient measurement; breakout's safe voltage is still unknown |
+| **RCWL-1601** | **Yes** | Ultrasonic distance, nominal approx. 2–450 cm; best practical range stated by Adafruit approx. 10–250 cm; **interface variant not yet confirmed** | Optional fixed-geometry canopy/height proxy and visible live IoT demonstration | Not water, nutrient, fruit ripeness, or health sensor |
+| **iPhone camera** | **Yes** | Web image capture/upload through Safari | Tomato ripeness and visible leaf symptom observations | Does not reveal soil/root/nutrient concentrations |
+| **Mac/laptop** | **Available for build, exact model unimportant** | USB serial + Python server | Sensor bridge, model API orchestration, local development server | Must remain connected to the METRO for live data |
 
-**Source:** [Adafruit RCWL-1601](https://www.adafruit.com/product/4007) and [Sensirion SHT30](https://sensirion.com/products/catalog/SHT30-DIS-B).
+Verified primary references: [METRO 328](https://www.adafruit.com/product/2488), [METRO 328 detailed specifications](https://www.adafruit.com/product/50), [RCWL-1601 TRIG/ECHO, Adafruit #4007](https://www.adafruit.com/product/4007), [RCWL-1601 I²C, Adafruit #4742](https://www.adafruit.com/product/4742), [SHT30 by Sensirion](https://sensirion.com/products/catalog/SHT30-DIS-B).
 
-**Wiring plan (if a 3.3 V ESP32/Pico is available):** SHT30 SDA/SCL to compatible I²C pins; RCWL-1601 TRIG/ECHO to digital pins; common GND. Check the **specific breakout board**, pinout, bus pull-ups and voltage/logic compatibility before powering. Do not assume a 5 V echo output is safe for a 3.3 V input. Sample sensors every 5–10 s, filter noisy distance readings, and send structured JSON.
+### 2.1 Confirm the RCWL-1601 *before* applying power
 
-**Distance/height method:** Mount the sensor downward on a fixed frame. If the sensor-to-soil distance with no plant is `d_ref` and the sensor-to-top-of-canopy reading is `d_t`, then:
+There are at least two vendor-sold board configurations with the same RCWL-1601 family name:
 
-`h_est(t) = d_ref - median(d_t measurements)`
+| Visible pin labels | Adafruit example | Required communication | Safe plan with SHT30 |
+|---|---|---|---|
+| `VCC`, `TRIG`, `ECHO`, `GND` | [#4007](https://www.adafruit.com/product/4007) | Digital trigger pulse + timed echo | **Preferred:** D9/D10 for ultrasonic and A4/A5 for SHT30 I²C |
+| `VCC`, `SCL`, `SDA`, `GND` | [#4742](https://www.adafruit.com/product/4742) | I²C at reported address `0x57` | **Caution:** Adafruit warns this model can lock up a shared I²C bus; test separately and do not promise simultaneous readings |
 
-This is an **approximate canopy-height proxy**, not an exact biological plant-height measure. Leaves can deflect/miss the ultrasonic beam, multiple plants can interfere, and a nonfixed phone/sensor cannot reliably track growth. With a one-day hackathon, keep height as a supplemental demo, not part of core harvest scoring.
+The exact board variant in your kit is **unconfirmed**. **Never** connect `TRIG`/`ECHO` wiring to pins labeled `SCL`/`SDA`.
+
+### 2.2 Recommended wiring — RCWL-1601 **TRIG/ECHO** variant only
+
+This table is valid **only if** your ultrasonic module is marked `VCC/TRIG/ECHO/GND` and the SHT30 breakout has been confirmed 5 V-compatible *on both power and I²C logic*.
+
+| Sensor pin | METRO 328 pin | Notes |
+|---|---|---|
+| SHT30 `VCC`/`VIN` | `5V` **only if breakout explicitly supports 5 V** | Otherwise use appropriately shifted 3.3 V I²C, not unsafe direct 5 V bus levels |
+| SHT30 `GND` | `GND` | Shared/common ground |
+| SHT30 `SDA` | `SDA` or `A4` | Hardware I²C data |
+| SHT30 `SCL` | `SCL` or `A5` | Hardware I²C clock |
+| RCWL-1601 `VCC` | `5V` | Adafruit #4007 supports 3–5.5 V |
+| RCWL-1601 `GND` | `GND` | Shared/common ground |
+| RCWL-1601 `TRIG` | `D9` | GPIO output |
+| RCWL-1601 `ECHO` | `D10` | GPIO input; 5 V METRO is compatible with the #4007 sensor when powered from 5 V |
+| METRO USB | Mac USB port via **USB data cable** | Power + serial + sketch upload |
+
+**SHT30 warning:** The **bare sensor's** 2.15–5.5 V supply specification is *not* proof that a particular breakout module can safely be attached to a 5 V I²C bus. Check its board markings and documentation. If it is 3.3 V logic only, add a bidirectional I²C level shifter or use a known 5 V-safe breakout. The METRO's `3V3` power output alone does **not** level-shift its SDA/SCL logic. Do not solder, power, or guess until the breakout is identified.
+
+**Breadboard safety:** Power off before changing connections; ensure each power rail's voltage is measured/known; never bridge `5V` to `GND` or `3V3`; use shared GND; check pin orientation; verify modules have soldered headers/jumper wires; and keep water away from the electronics.
+
+### 2.3 Alternative wiring — RCWL-1601 **I²C** variant
+
+| I²C RCWL pin | METRO pin | Caveat |
+|---|---|---|
+| `VCC` | Compatible power rail | Confirm module rating |
+| `GND` | `GND` | Common ground |
+| `SDA` | `SDA` / `A4` | *Only in a separately tested bus setup* |
+| `SCL` | `SCL` / `A5` | *Only in a separately tested bus setup* |
+
+This I²C variant can fail when sharing a bus with SHT30; the METRO 328 has one main hardware I²C controller. First test each independently with an I²C scanner and example code. Even if both work alone, combined operation is **not validated**. For the hackathon, prioritize live SHT30 and show the ultrasonic channel as **unavailable** or explicitly **simulated** rather than destabilize the whole demo. A later hardware revision can use a separate controller/bus and validated isolation method.
+
+### 2.4 Arduino IDE and USB setup (Mac)
+
+1. Install [Arduino IDE](https://www.arduino.cc/en/software) and connect the METRO using a **micro-USB data cable**.
+2. Select **Tools → Board → Arduino AVR Boards → Arduino Uno** (the METRO 328 ships with an Uno-compatible Optiboot bootloader).
+3. Select **Tools → Port**. On macOS, it will often appear as `/dev/cu.SLAB_USBtoUART` or similar; **do not hard-code the name**.
+4. Upload **File → Examples → 01.Basics → Blink**; verify the on-board LED flashes.
+5. If no serial port appears, check cable/USB adapter; METRO versions with CP2104 may need the [Silicon Labs CP210x VCP driver](https://www.silabs.com/developer-tools/usb-to-uart-bridge-vcp-drivers) as advised by Adafruit.
+6. Wire/test **SHT30 alone**, then **ultrasonic alone**, then connect both only after checking variant and voltage compatibility.
+7. Open **Serial Monitor at 115200 baud** to confirm sensor output. **Close Serial Monitor before starting the Python bridge**, since both programs generally cannot own the same port simultaneously.
+
+### 2.5 Distance-to-height estimation
+
+With the ultrasonic transducer fixed directly above a plant and **a stable empty soil/base reading** `d_ref`, use a window of repeated distance measurements `d_1, …, d_n`:
+
+```text
+canopy_height_proxy_cm = d_ref_cm - median(valid_distances_cm)
+```
+
+This is a *rough canopy-height proxy*, not a precise biological growth measure. Reject out-of-range echoes, document fixed sensor-to-soil geometry, and never compare readings taken at different positions as plant growth. **Ultrasonic measurement is a supporting visualization, not an input for tomato ripeness or nutrient diagnosis.**
+
+### 2.6 Minimal demonstration firmware — **only for TRIG/ECHO RCWL**
+
+Requires the **Adafruit SHT31 Library** in Arduino IDE's Library Manager (compatible with the SHT30 family) and an electrically compatible SHT30 breakout. This is **starter code** for a verified TRIG/ECHO module; it has **not been tested on your particular physical kit**.
+
+```cpp
+#include <Wire.h>
+#include <Adafruit_SHT31.h>
+#include <math.h>
+
+Adafruit_SHT31 sht = Adafruit_SHT31();
+const int TRIG_PIN = 9;
+const int ECHO_PIN = 10;
+
+void setup() {
+  Serial.begin(115200);
+  Wire.begin();
+  pinMode(TRIG_PIN, OUTPUT);
+  pinMode(ECHO_PIN, INPUT);
+  digitalWrite(TRIG_PIN, LOW);
+  if (!sht.begin(0x44) && !sht.begin(0x45)) {
+    Serial.println("{\"status\":\"sht30_not_found\"}");
+  }
+}
+
+void loop() {
+  float temperature = sht.readTemperature();
+  float humidity = sht.readHumidity();
+
+  digitalWrite(TRIG_PIN, LOW);
+  delayMicroseconds(2);
+  digitalWrite(TRIG_PIN, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(TRIG_PIN, LOW);
+  unsigned long durationUs = pulseIn(ECHO_PIN, HIGH, 30000UL);
+  float distanceCm = durationUs > 0 ? durationUs * 0.0343f / 2.0f : NAN;
+
+  Serial.print("{\"source\":\"metro328\",\"uptime_ms\":");
+  Serial.print(millis());
+  Serial.print(",\"air_temperature_c\":");
+  if (isnan(temperature)) Serial.print("null"); else Serial.print(temperature, 2);
+  Serial.print(",\"air_relative_humidity_pct\":");
+  if (isnan(humidity)) Serial.print("null"); else Serial.print(humidity, 2);
+  Serial.print(",\"ultrasonic_distance_cm\":");
+  if (isnan(distanceCm) || distanceCm < 2 || distanceCm > 450) Serial.print("null");
+  else Serial.print(distanceCm, 2);
+  Serial.println("}");
+  delay(2000);
+}
+```
+
+The ultrasonic conversion assumes an approximate speed of sound (343 m/s near room temperature). Temperature compensation and median filtering are upgrades; do not claim this simple measurement is precision-calibrated. `null` is preferable to a misleading zero reading.
+
+### 2.7 Computer-side Python serial bridge
+
+Install `pip install pyserial` in the backend's Python environment. Use a program like this to read each line and timestamp it on the laptop (the METRO does not provide a wall-clock timestamp):
+
+```python
+import json
+from datetime import datetime, timezone
+import serial
+
+PORT = "/dev/cu.SLAB_USBtoUART"  # replace with the actual detected port
+
+with serial.Serial(PORT, 115200, timeout=2) as arduino:
+    while True:
+        line = arduino.readline().decode("utf-8", errors="replace").strip()
+        if not line:
+            continue
+        try:
+            reading = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if reading.get("source") != "metro328":
+            continue
+        reading["received_at_utc"] = datetime.now(timezone.utc).isoformat()
+        reading["data_mode"] = "live"
+        print(reading)  # production: persist latest reading for GET /api/sensors/latest
+```
+
+**Implementation note:** `serial_bridge.py` can run as a background thread/process in the Python backend and share its latest validated reading with FastAPI. On serial disconnect, mark the feed **stale/unavailable**; do not silently reuse old measurements as if live.
 
 ## 3. Recommended use case: tomatoes first
 
@@ -83,101 +248,110 @@ A second photo showing the **leaves** can generate a visible-stress note: e.g., 
 - **Fertilizer:** `Insufficient evidence` — no soil test, known feeding history, or diagnostic leaf finding.
 - **Confidence:** qualitative `high / medium / low` for the **visual stage**, not invented percentage certainty. Explanations should cite data and rules.
 
-## 5. System architecture
+## 5. System architecture — revised for the METRO 328
 
 ```mermaid
 flowchart TD
-    A[Phone web interface] -->|Photo and plant profile| B[Backend API]
-    C[SHT30: ambient temperature + RH] --> D[Microcontroller / serial bridge]
-    E[RCWL-1601: distance] --> D
-    D -->|Sensor JSON| B
-    F[Open-Meteo: weather + rainfall] --> B
-    G[Curated extension guidance / local knowledge records] --> H[Crop rule engine]
-    B --> I[Image analysis: maturity + visual stress]
-    I --> H
-    B --> H
-    H --> J[Recommendations with evidence + uncertainty]
-    J --> A
-    B --> K[(Optional SQLite / JSON history)]
+    SHT[SHT30: air temperature and RH] --> M[Adafruit METRO 328]
+    SONAR[RCWL-1601: distance] --> M
+    M -->|USB serial: JSON lines| MAC[Mac: Python serial bridge]
+    MAC --> API[FastAPI backend]
+    PHONE[iPhone Safari web app: photo and plant info] -->|HTTPS or reachable LAN URL| API
+    WEATHER[Open-Meteo: rain and temperature] --> API
+    KNOW[Curated tomato extension rules and citations] --> RULES[Deterministic agronomic decision engine]
+    API --> VISION[Vision model: structured visible observations]
+    VISION --> RULES
+    API --> RULES
+    RULES --> CARDS[Harvest / Water / Fertilizer evidence cards]
+    CARDS --> PHONE
+    API --> DB[(Optional local SQLite history)]
 ```
 
-### Modules and interfaces
+**Network boundaries:** Sensors are **not** wireless and do **not** send readings directly to an iPhone. The Mac reads USB data and serves/hosts the application. When testing on iPhone, `localhost` on the phone is *not* the Mac. Use a reachable Mac LAN IP on the same non-isolated network or a secure deployment/tunnel. A photo upload via an HTML file input works in mobile Safari; direct camera-stream access through `getUserMedia()` generally requires a secure HTTPS origin, so **use an image file-picker/camera capture upload for the MVP**. Some campus/guest Wi-Fi networks isolate devices; verify connectivity early and prepare a laptop-hosted fallback demo.
 
-| Module | Responsibility | Suggested implementation |
+### 5.1 Module ownership and technologies
+
+| Module | Responsible for | Technology | Acceptance test |
+|---|---|---|---|
+| `sensors/firmware/` | Poll SHT30 and **identified** RCWL-1601 interface; emit newline-delimited JSON | Arduino IDE / C++ on METRO 328 | Valid serial measurements with explicit `null` when unavailable |
+| `sensors/serial_bridge.py` | Read the Mac's USB serial device; attach UTC receipt time and freshness | Python + `pyserial` | Live reading becomes stale when unplugged |
+| `backend/app.py` | Expose sensor/photo APIs; combine inputs and start analysis | FastAPI, Uvicorn | End-to-end `POST /api/analyze` succeeds |
+| `backend/image_analysis.py` | Structured vision observations | Hosted vision API or constrained simple fallback | Distinguishes example green/turning/red images and abstains on bad photos |
+| `backend/weather.py` | Fetch/cache rain forecast/history | Open-Meteo | Forecast includes time, location, and source attribution |
+| `backend/decision_engine.py` | Conservative evidence-linked crop guidance | Python rules | Missing soil test never generates an exact fertilizer dose |
+| `frontend/` | Camera upload, crop selection, three cards, provenance, freshness | React + Vite + Tailwind CSS | Works on iPhone Safari and laptop |
+| `knowledge/` | Crop rule citations/conditions | Small reviewed JSON | Every advice card traces to specific evidence/reference |
+
+### 5.2 Suggested HTTP and serial contracts
+
+| Endpoint/transport | Data | Notes |
 |---|---|---|
-| Frontend | Mobile-first camera upload, input forms, result screen | Streamlit for fastest implementation; or React/Vite if a frontend developer is available |
-| Sensor ingestion | Read temperature, RH, distance; validate timestamps/units | ESP32/Pico Arduino-style firmware + serial JSON bridge; mock endpoint until hardware works |
-| Backend | Orchestrate photo, context, sensors, weather, rules | Python FastAPI or Streamlit server-side functions |
-| Image analyzer | Return structured visual observations, not freeform instructions | Multimodal vision API if available; fallback to human labels or lightweight classifier |
-| Weather adapter | Precipitation/temperature forecast, last-days weather | Open-Meteo REST API with timeouts and cache |
-| Knowledge base | Curated per-crop rules and cited text | `knowledge/tomato_rules.json`, references in Markdown |
-| Decision engine | Combine observations and mark missing evidence | Deterministic Python rules; optional LLM **only to explain** |
-| Storage | Keep plant profile and photo/reading history | In-memory dictionary or SQLite for MVP |
+| **USB serial**: newline JSON | `air_temperature_c`, `air_relative_humidity_pct`, `ultrasonic_distance_cm`, `uptime_ms`, `source` | Measured at METRO; no location/time-of-day stored in MCU |
+| **GET `/api/sensors/latest`** | Last reading + `received_at_utc`, `data_mode`, `fresh` | If stale, return explicit unavailable status; require reasonable validation |
+| **GET `/api/weather?latitude=…&longitude=…`** | Forecast/history + source + retrieval time | Coordinates supplied from user-approved crop location; optional demo default labeled |
+| **POST `/api/analyze`** | `multipart/form-data`: `image` + crop, optional variety, soil check, location, harvest goal | Backend obtains latest *server-side* sensor data, image analysis and weather |
+| **GET `/api/health`** | Backend/sensor/vision/weather availability | Useful during judging/demo |
 
-**Design principle:** An AI model should describe **what is visible**. A deterministic rule layer decides what is justified from available evidence; a language model may summarize but must not invent readings, references, or fertilizer doses.
+**Example live sensor line** (illustrative schema, **not a real measurement**):
 
-### Example `POST /analyze` JSON contract (illustrative)
+```json
+{"source":"metro328","uptime_ms":120500,"air_temperature_c":24.10,"air_relative_humidity_pct":61.00,"ultrasonic_distance_cm":32.50}
+```
+
+**Example normalized `GET /api/sensors/latest`** (synthetic):
 
 ```json
 {
-  "plant_id": "demo-tomato-01",
-  "crop": "tomato",
-  "variety": null,
-  "growth_stage": "fruiting",
-  "photo_type": "fruit",
-  "observations": {
-    "air_temperature_c": 24.1,
-    "air_relative_humidity_pct": 61.0,
-    "ultrasonic_distance_cm": 32.5,
-    "soil_dry_at_5cm": true,
-    "soil_moisture_pct": null
-  },
-  "weather": {
-    "rain_last_7d_mm": 3.2,
-    "rain_next_24h_mm": 0.5,
-    "source": "open-meteo"
-  }
+  "source": "metro328",
+  "data_mode": "live",
+  "received_at_utc": "2026-11-07T20:19:00+00:00",
+  "fresh": true,
+  "air_temperature_c": 24.1,
+  "air_relative_humidity_pct": 61.0,
+  "ultrasonic_distance_cm": 32.5
 }
 ```
 
-In implementation, upload the image as a multipart file or URL linked to the request rather than embedding an entire image in JSON.
+For a disconnected sensor: `fresh: false`, with the last receipt time or `null`; for a mock demo: `data_mode: "simulated"` prominently shown in the dashboard. **Never describe synthetic values as live evidence.**
 
-### Example normalized analysis output
+**Illustrative `POST /api/analyze` form fields:**
+
+```text
+image: <uploaded image JPEG/PNG/HEIC if decoding supported>
+crop: tomato
+variety: unknown
+harvest_goal: eat_now
+soil_check: dry_at_5cm | moist | wet | unknown
+latitude, longitude: optional, user-provided
+```
+
+**Illustrative recommendation response** (schema rather than actual inference):
 
 ```json
 {
   "crop": "tomato",
-  "image": {
-    "fruit_ripeness_stage": "red",
-    "visible_leaf_yellowing": null,
-    "image_quality": "usable",
-    "uncertainty": "medium"
-  },
+  "visual_observations": {"maturity_stage": "red", "photo_quality": "usable"},
+  "sensor_data_mode": "live",
   "harvest": {
     "status": "likely_ready",
-    "evidence": ["visible red fruit", "crop profile: tomato"],
-    "limitations": ["variety and firmness not confirmed"]
+    "evidence": ["visible red fruit", "user harvest goal: eat now"],
+    "limitation": "variety and firmness not verified"
   },
   "watering": {
     "status": "check_and_likely_water",
-    "evidence": ["manual soil check: dry at 5 cm", "low recent precipitation"],
-    "limitations": ["no direct soil moisture sensor"]
+    "evidence": ["user reports dry soil at 5 cm"],
+    "limitation": "no soil moisture sensor; air RH is not soil RH"
   },
   "fertilizer": {
     "status": "insufficient_evidence",
     "evidence": [],
-    "limitations": ["no soil test or nutrient measurement"]
+    "limitation": "no soil test or nutrient concentration measured"
   },
-  "references": [
-    {
-      "title": "Growing tomatoes in home gardens",
-      "url": "https://extension.umn.edu/garden-and-home/yard-and-garden/gardening-in-minnesota/growing-tomatoes"
-    }
-  ]
+  "references": [{"title": "University of Minnesota Extension tomato guide", "url": "https://extension.umn.edu/garden-and-home/yard-and-garden/gardening-in-minnesota/growing-tomatoes"}]
 }
 ```
 
-All numerical values in these examples are **synthetic demo data**, not sensor observations or validated thresholds.
+The vision model describes **visible** traits. The Python rules decide whether an action is supportable; a language model may summarize evidence but must **not** invent live readings, nutrient concentrations, yield, or references.
 
 ## 6. Agricultural knowledge and open data
 
@@ -239,7 +413,7 @@ This is an API **request format**, not a verified reading at the time of the dem
 | Rank | Deliverable | Acceptance criterion | Demo importance (team estimate, not measured) |
 |---|---|---|---|
 | P0 | **Phone photo -> harvest-stage explanation** | Upload 3 distinct tomato photos (green, turning, red) and receive sensible differentiated explanations | Very high |
-| P0 | **Sensor readings visible in app** | Live or serial-connected SHT30 temperature/RH; RCWL-1601 distance with units and timestamps | Very high |
+| P0 | **Sensor readings visible in app** | METRO 328 → USB serial → Mac → app; live SHT30 temperature/RH and RCWL distance when the correct module variant works; units and freshness | Very high |
 | P0 | **Weather integration** | API returns a local forecast, including rain; clearly shows source/time | High |
 | P0 | **Evidence-based recommendation cards** | Harvest, watering, fertilization each shown with limits; never fabricate soil measurements | Very high |
 | P1 | **Manual soil check input** | Toggle or short selector for damp/dry/unknown; impacts watering result | High |
@@ -254,19 +428,21 @@ This is an API **request format**, not a verified reading at the time of the dem
 
 | Workstream | Owner | Interfaces / task |
 |---|---|---|
-| Hardware / sensor | Member 1 | Read SHT30 and RCWL-1601, choose microcontroller, stream JSON, implement mock mode |
+| Hardware / sensor | Member 1 | METRO 328 Arduino firmware, verify sensor variants and wiring, stream USB-serial JSON, implement mock fallback |
 | Computer vision / ML | Member 2 | Define structured image labels, image quality checks, tomato maturity demo cases |
 | Backend / rules / data | Member 3 | Weather API, agronomic rules with citations, uncertainty and recommendation JSON |
 | Frontend / demo / integration | Member 4 | iPhone-friendly upload flow, dashboard, tests, screenshots, demo storyline |
 
 For a 2–3 person team, merge frontend/backend or vision/rules roles. Assign one person **integration ownership** even if responsibilities overlap.
 
+**Critical dependency:** Hardware and frontend development run **in parallel**. Do not wait for the ultrasonic sensor to work before the image/decision pipeline is usable. The sole hardware gate before applying power is confirming the **actual pin labels and SHT30 breakout voltage tolerance**.
+
 ### Suggested 24-hour work plan
 
 | Elapsed time | Outcome |
 |---|---|
 | 0–2 h | Agree crop, demo story, JSON schema, repo tasks and UI sketch |
-| 2–6 h | Frontend photo upload; sensor reader or labeled mock; weather endpoint |
+| 2–6 h | Frontend iPhone photo upload; METRO Blink and USB-serial bring-up or labeled mock; weather endpoint |
 | 6–10 h | Structured visual observation + deterministic rules + data-source links |
 | 10–14 h | Integrate end-to-end; test green/turning/red fruit photos; manual soil input |
 | 14–18 h | Fix failures, improve clarity, add crop profile and robust fallback |
@@ -285,20 +461,22 @@ cropsense-ai/
 │   ├── SCIENCE_LIMITATIONS.md  # Measured vs inferred, uncertainties
 │   └── DEMO.md                 # Step-by-step presentation script
 ├── frontend/
-│   └── ...                     # Streamlit or React client
+│   └── ...                     # React/Vite/Tailwind mobile web app
 ├── backend/
-│   ├── app.py
+│   ├── app.py                 # FastAPI endpoints
 │   ├── image_analysis.py
 │   ├── decision_engine.py
 │   └── weather.py
 ├── sensors/
-│   ├── firmware/              # Microcontroller code (if available)
-│   ├── serial_bridge.py
-│   └── mock_sensor.json
+│   ├── firmware/
+│   │   └── metro328.ino       # Arduino Uno-compatible METRO firmware
+│   ├── serial_bridge.py       # pyserial on Mac/laptop
+│   └── mock_sensor.json       # Clearly flagged simulated data
 ├── knowledge/
 │   ├── tomato_rules.json
 │   └── sources.md
 ├── tests/
+│   ├── test_sensor_parser.py  # Serial JSON/null and freshness
 │   ├── test_harvest.py
 │   ├── test_watering.py
 │   └── test_missing_data.py
@@ -320,7 +498,9 @@ cropsense-ai/
 | Air RH high but soil check dry | Do not claim wet soil from high air RH |
 | Yellow leaf photo, no soil test | Possible causes; **no exact fertilizer or nutrient prescription** |
 | Weather API unavailable | State data is unavailable; provide limited offline output |
-| Sensor disconnected | Show unavailable or clearly labeled mock values, not fabricated live readings |
+| Sensor disconnected | Mark `fresh=false` or show *simulated* prominently; never fabricate live readings |
+| I²C ultrasonic variant + SHT30 share bus | Check bus lockup; disable ultrasonic channel rather than risk all sensor data |
+| SHT30 breakout is 3.3 V-only | Do not direct-wire 5 V I²C without validated level shifting |
 | Unfixed ultrasonic geometry | Do not display apparent plant growth as if measured accurately |
 
 ### Evaluation metrics (must be measured, not invented)
@@ -340,7 +520,7 @@ No target accuracy or business-impact number should be claimed without an actual
 |---|---|---|
 | Incorrect watering inference from air humidity | **Critical** | Require manual soil check or probe; show uncertainty |
 | Incorrect nutrient diagnosis from leaf image | **Critical** | Show differential causes; defer fertilizer dose to soil testing / expert advice |
-| Hardware integration failure | High | Mock input mode; test USB serial early; fallback screenshots |
+| METRO/USB integration failure | High | Check USB data cable and CP2104 port; test Blink/serial early; clearly labeled simulated values |
 | Vision hallucination / image ambiguity | High | Structured labels, image-quality gate, do not infer invisible properties |
 | Ultrasonic false growth claims | Medium | Fixed mounting, median of samples, timestamp and source flag |
 | Inconsistent data/time/location | Medium | Record units, timezone, retrieval time, coordinates and source type |
@@ -358,16 +538,27 @@ No target accuracy or business-impact number should be claimed without an actual
 
 **Suggested demo sentence:** “We do not pretend that air humidity tells us how wet the soil is. Our system exposes what is measured, what is inferred, and what still needs a human check.”
 
-## 14. Decisions the team should make immediately
+## 14. Immediate team decisions and acceptance checklist
 
-- [ ] Choose **tomato-only MVP** or one other specific crop with clear photo evidence.
-- [ ] Confirm available microcontroller and whether it supports the SHT30 and RCWL-1601.
-- [ ] Choose **Streamlit** (faster) or React + FastAPI (greater UI flexibility).
-- [ ] Choose vision approach: hosted multimodal model, existing classifier, or rule-based color observations for first demo.
-- [ ] Secure 3–6 **own** reference photos including immature/midstage/ripe and one blurry case.
-- [ ] Decide how to input/check the soil condition manually, since no soil sensor is listed.
-- [ ] Agree on a shared JSON interface before coding in parallel.
-- [ ] Keep a mock-data backup; test actual iPhone Safari upload.
+### Confirm / decide (do this at the start)
+
+- [x] **Microcontroller selected:** Adafruit METRO 328 — Arduino Uno-compatible, **USB serial to Mac**.
+- [x] **Prototyping platform:** Full-size breadboard.
+- [x] **Other input devices:** SHT30, RCWL-1601, iPhone camera.
+- [x] **Application form:** Mobile-responsive **web app**, not native iOS.
+- [ ] Confirm the **RCWL-1601 pin labels**: `TRIG/ECHO` vs `SCL/SDA`.
+- [ ] Identify exact **SHT30 breakout voltage and I²C pull-up compatibility**.
+- [ ] Verify micro-USB **data** cable, jumper wires, and any necessary header pins/level shifter.
+- [ ] Verify Mac USB serial port and Blink sketch; run sensors individually.
+- [ ] Lock **tomato-only** as the first crop for the judges' demo.
+- [ ] Obtain several **team-owned tomato photos**: green, turning, red, blurry and a leaf condition.
+- [ ] Agree on `GET /api/sensors/latest`, `POST /api/analyze`, and explicit `live` vs `simulated` labels.
+- [ ] Decide how to obtain soil check (`dry_at_5cm`, `moist`, `wet`, `unknown`) without a soil sensor.
+- [ ] Test iPhone Safari access to the app over the actual demo network; prepare fallback.
+
+### Definition of done for hackathon submission
+
+The team can demonstrate a **single working walkthrough**: take/upload an iPhone photo → retrieve genuine *or clearly labeled simulated* sensor data → fetch a cited Open-Meteo forecast → produce the three understandable recommendation cards → explain both the evidence and the limitations. Have a backup recording in case of Wi-Fi, USB, model API, or sensor failure.
 
 ## 15. Future roadmap after hackathon
 
@@ -380,15 +571,20 @@ No target accuracy or business-impact number should be claimed without an actual
 
 ## Source references (checked November 7, 2026)
 
-1. Adafruit, [RCWL-1601 ultrasonic distance sensor](https://www.adafruit.com/product/4007) — supply voltage, interface and range.
-2. Sensirion, [SHT30-DIS-B product specifications](https://sensirion.com/products/catalog/SHT30-DIS-B) — typical RH/temperature accuracy, voltage, I²C.
-3. University of Minnesota Extension, [Growing tomatoes in home gardens](https://extension.umn.edu/garden-and-home/yard-and-garden/gardening-in-minnesota/growing-tomatoes) — harvest and watering guidance.
-4. University of Minnesota Extension, [Watering the vegetable garden](https://extension.umn.edu/garden-and-home/yard-and-garden/gardening-in-minnesota/watering-the-vegetable-garden) — manual soil checks.
-5. Penn State Extension, [Diagnosing poor plant health](https://extension.psu.edu/diagnosing-poor-plant-health) — overlapping symptoms and differential causes.
-6. Penn State Extension, [Diagnosing common problems in the vegetable garden](https://extension.psu.edu/diagnosing-common-problems-in-the-vegetable-garden) — disease/soil-test caution.
-7. Open-Meteo, [Weather forecast API and documentation](https://open-meteo.com/en/docs) — forecast/weather data and terms.
-8. NASA POWER, [Daily API documentation](https://power.larc.nasa.gov/docs/services/api/temporal/daily/) — optional historical agroclimatic data.
-9. USDA NRCS, [Web Soil Survey](https://www.nrcs.usda.gov/resources/data-and-reports/web-soil-survey) — mapped soil information.
-10. PlantDoc, [Original dataset repository](https://github.com/pratikkayal/PlantDoc-Dataset) — optional leaf-disease image research.
+1. Adafruit, [METRO 328 with headers](https://www.adafruit.com/product/2488) and [METRO 328 product specifications](https://www.adafruit.com/product/50) — ATmega328P, Arduino Uno selection, USB serial/CP2104, 5 V logic, memory and micro-USB power.
+2. Adafruit, [RCWL-1601 TRIG/ECHO (#4007)](https://www.adafruit.com/product/4007) — ultrasonic range, voltage and trigger/echo interface.
+3. Adafruit, [RCWL-1601 I²C (#4742)](https://www.adafruit.com/product/4742) — separate I²C variant; warned bus-sharing problems.
+4. Sensirion, [SHT30-DIS-B product specifications](https://sensirion.com/products/catalog/SHT30-DIS-B) — typical RH/temperature accuracy, voltage, I²C.
+5. University of Minnesota Extension, [Growing tomatoes in home gardens](https://extension.umn.edu/garden-and-home/yard-and-garden/gardening-in-minnesota/growing-tomatoes) — harvest and watering guidance.
+6. University of Minnesota Extension, [Watering the vegetable garden](https://extension.umn.edu/garden-and-home/yard-and-garden/gardening-in-minnesota/watering-the-vegetable-garden) — manual soil checks.
+7. Penn State Extension, [Diagnosing poor plant health](https://extension.psu.edu/diagnosing-poor-plant-health) — overlapping symptoms and differential causes.
+8. Penn State Extension, [Diagnosing common problems in the vegetable garden](https://extension.psu.edu/diagnosing-common-problems-in-the-vegetable-garden) — disease/soil-test caution.
+9. Open-Meteo, [Weather forecast API and documentation](https://open-meteo.com/en/docs) — forecast/weather data, free noncommercial terms, and CC BY 4.0 attribution.
+10. NASA POWER, [Daily API documentation](https://power.larc.nasa.gov/docs/services/api/temporal/daily/) — optional historical agroclimatic data.
+11. USDA NRCS, [Web Soil Survey](https://www.nrcs.usda.gov/resources/data-and-reports/web-soil-survey) — mapped soil information.
+12. PlantDoc, [Original dataset repository](https://github.com/pratikkayal/PlantDoc-Dataset) — optional leaf-disease image research.
+13. Open-Meteo, [pricing and usage terms](https://open-meteo.com/en/pricing) and [terms](https://open-meteo.com/en/terms) — free noncommercial API use, attribution and limits.
+14. Silicon Labs, [CP210x USB-to-UART VCP drivers](https://www.silabs.com/developer-tools/usb-to-uart-bridge-vcp-drivers) — driver link if a METRO serial port does not enumerate.
+15. Adafruit, [5 V-to-3 V I²C level shifter guide](https://learn.adafruit.com/adafruit-qt-5v-to-3v-shifter-breakout/wiring) — a compatible solution when a breakout is not 5 V I²C safe.
 
 **Licensing note:** Each third-party dataset and external image has its own terms. Linking to source articles for evidence does not grant permission to republish their images or full text.
