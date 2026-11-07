@@ -1,0 +1,190 @@
+{
+  "crop": "tomato",
+  "version": "1.0.0",
+  "last_updated": "2026-11-07",
+  "sources": [
+    {
+      "id": "umn-tomatoes",
+      "title": "Growing tomatoes in home gardens",
+      "organization": "University of Minnesota Extension",
+      "url": "https://extension.umn.edu/garden-and-home/yard-and-garden/gardening-in-minnesota/growing-tomatoes",
+      "retrieved_at": "2026-11-07",
+      "applicability": "Ripeness, harvesting, temperature impact on fruit ripening, indoor ripening",
+      "cautions": "Color alone can be misleading; cultivar traits vary; mature green tomatoes can ripen off-vine."
+    },
+    {
+      "id": "umn-watering",
+      "title": "Watering the vegetable garden",
+      "organization": "University of Minnesota Extension",
+      "url": "https://extension.umn.edu/garden-and-home/yard-and-garden/gardening-in-minnesota/watering-the-vegetable-garden",
+      "retrieved_at": "2026-11-07",
+      "applicability": "Irrigation technique, manual root-zone check, air humidity vs soil moisture",
+      "cautions": "Check soil 5–10 cm below surface; air relative humidity does not reflect soil moisture."
+    },
+    {
+      "id": "psu-health",
+      "title": "Diagnosing poor plant health",
+      "organization": "Penn State Extension",
+      "url": "https://extension.psu.edu/diagnosing-poor-plant-health",
+      "retrieved_at": "2026-11-07",
+      "applicability": "Differential diagnosis for foliar symptoms (yellowing, browning, wilting)",
+      "cautions": "Foliar symptoms overlap between disease, root rot, water stress, temperature, and nutrient deficiency. Never prescribe N-P-K without soil test."
+    },
+    {
+      "id": "psu-vegetable-problems",
+      "title": "Diagnosing common problems in the vegetable garden",
+      "organization": "Penn State Extension",
+      "url": "https://extension.psu.edu/diagnosing-common-problems-in-the-vegetable-garden",
+      "retrieved_at": "2026-11-07",
+      "applicability": "Nutrient deficiency caution and soil testing",
+      "cautions": "Over-fertilization can cause salt burn and damage blossom set; soil test required for accurate prescription."
+    },
+    {
+      "id": "open-meteo",
+      "title": "Open-Meteo Weather API",
+      "organization": "Open-Meteo",
+      "url": "https://open-meteo.com/en/docs",
+      "retrieved_at": "2026-11-07",
+      "applicability": "Hourly/daily temperature, precipitation, and relative humidity forecast",
+      "cautions": "Modeled regional weather; does not measure microclimate in an individual container."
+    }
+  ],
+  "harvest_rules": {
+    "red": {
+      "status": "likely_ready",
+      "title": "Likely Ready for Harvest",
+      "summary": "Fruit displays characteristic mature-red coloration. Check firmness manually before picking.",
+      "caveats": [
+        "Color alone can be misleading for non-red cultivars (e.g., green-when-ripe, yellow, or purple varieties).",
+        "Gently squeeze to confirm slight give and fruit ease of detachment at the calyx."
+      ],
+      "next_action": "Gently check firmness. If eating fresh today, harvest when fully colored. If storing or transporting, slight firmness is preferred.",
+      "source_ids": ["umn-tomatoes"]
+    },
+    "turning": {
+      "status": "approaching_harvest",
+      "title": "Approaching Harvest (Breaker/Turning Stage)",
+      "summary": "Fruit shows initial pink/orange blush indicating the onset of ripening.",
+      "caveats": [
+        "Ripening progression depends on temperature (optimal between 20°C and 25°C; stalls above 30°C or below 10°C).",
+        "Can be harvested at breaker stage to avoid field pests/cracking and finished indoors at room temperature."
+      ],
+      "next_action": "Inspect daily or harvest at breaker stage to finish ripening indoors out of direct sun.",
+      "source_ids": ["umn-tomatoes"]
+    },
+    "green": {
+      "status": "inspect_maturity",
+      "title": "Not Yet Ready / Immature Stage",
+      "summary": "Fruit appears green without color break.",
+      "caveats": [
+        "Mature-green tomatoes have reached full size, white locular jelly, and can ripen off-vine if frost threatens.",
+        "Immature green fruit will not ripen satisfactorily off-vine."
+      ],
+      "next_action": "Allow fruit to remain on vine unless frost is imminent. Monitor for breaker blush.",
+      "source_ids": ["umn-tomatoes"]
+    },
+    "uncertain": {
+      "status": "insufficient_evidence",
+      "title": "Visual Analysis Uncertain / Retake Photo",
+      "summary": "Visual stage could not be reliably determined due to angle, glare, occlusion, or lack of visual reference.",
+      "caveats": [
+        "Camera angle, lighting, distance, and foliage occlusion prevent reliable color assessment."
+      ],
+      "next_action": "Take a close-up photo in indirect natural light showing the whole fruit and calyx.",
+      "source_ids": ["umn-tomatoes"]
+    }
+  },
+  "watering_rules": {
+    "dry_at_5cm": {
+      "status": "check_and_likely_water",
+      "title": "Check Soil & Likely Water",
+      "summary": "Physical root-zone soil check indicates dryness 5 cm below surface.",
+      "rationale": "Direct soil moisture assessment confirms root-zone depletion regardless of ambient air humidity.",
+      "caveats": [
+        "Air relative humidity does not reflect root-zone soil water.",
+        "Ensure containers or beds have proper drainage to avoid waterlogging."
+      ],
+      "next_action": "Apply water at the soil base (avoid wetting leaves) until water moistens the root zone evenly.",
+      "source_ids": ["umn-watering"]
+    },
+    "moist": {
+      "status": "monitor_conditions",
+      "title": "Soil Moisture Adequate — Monitor",
+      "summary": "Root-zone check indicates moist soil; water demand is satisfied.",
+      "rationale": "Sufficient root-zone moisture prevents stress and reduces blossom end rot risk.",
+      "caveats": [
+        "Avoid unnecessary watering which can leach nutrients and increase root rot risk."
+      ],
+      "next_action": "Recheck in 24–48 hours, especially during high temperature periods.",
+      "source_ids": ["umn-watering"]
+    },
+    "wet": {
+      "status": "avoid_watering",
+      "title": "Soil Saturated — Avoid Watering",
+      "summary": "Soil is saturated or waterlogged; additional irrigation is contraindicated.",
+      "rationale": "Excessive moisture depletes soil oxygen and promotes fungal pathogens and root hypoxia.",
+      "caveats": [
+        "Persistent waterlogging causes leaf chlorosis and wilting resembling drought stress."
+      ],
+      "next_action": "Allow soil to drain and aerate. Check pot drainage holes or bed drainage channels.",
+      "source_ids": ["umn-watering", "psu-health"]
+    },
+    "unknown": {
+      "status": "check_soil_before_deciding",
+      "title": "Check Soil Physically Before Deciding",
+      "summary": "No direct soil moisture data available.",
+      "rationale": "Neither ambient humidity, temperature, nor ultrasonic distance measures soil moisture.",
+      "caveats": [
+        "Air humidity is NOT soil moisture. Do not guess irrigation needs without a tactile soil check or probe."
+      ],
+      "next_action": "Insert finger or trowel 5–10 cm into the soil near the root zone to determine moisture.",
+      "source_ids": ["umn-watering"]
+    }
+  },
+  "fertilizer_rules": {
+    "no_symptoms": {
+      "status": "insufficient_evidence",
+      "title": "Insufficient Evidence for Fertilization",
+      "summary": "No nutrient stress detected and no laboratory soil test provided.",
+      "rationale": "Visual inspection and ambient sensors cannot determine nitrogen, phosphorus, or potassium levels.",
+      "caveats": [
+        "Routine fertilizer application without soil testing can cause salt buildup or excessive vegetative growth at the expense of fruit."
+      ],
+      "next_action": "Maintain regular balanced organic mulch or follow scheduled compost regimen; conduct annual extension soil test.",
+      "source_ids": ["psu-vegetable-problems"]
+    },
+    "yellowing": {
+      "status": "investigate_stress",
+      "title": "Visible Chlorosis (Yellowing) — Investigation Needed",
+      "summary": "Foliage shows yellowing patterns, but specific cause cannot be verified without soil/root inspection.",
+      "rationale": "Yellowing can stem from nitrogen deficiency, natural lower-leaf senescence, overwatering, root rot, spider mites, or soil pH imbalance.",
+      "caveats": [
+        "Do NOT immediately apply nitrogen. If caused by overwatering or root disease, added fertilizer worsens damage."
+      ],
+      "next_action": "Examine leaf location (lower vs new growth), inspect soil moisture for waterlogging, and submit a soil sample to local extension.",
+      "source_ids": ["psu-health", "psu-vegetable-problems"]
+    },
+    "browning_spots": {
+      "status": "investigate_stress",
+      "title": "Foliar Spots / Necrosis — Investigate Pathogens or Osmotic Stress",
+      "summary": "Foliage displays necrotic margins or spots; potential early blight, septoria, or salt burn.",
+      "rationale": "Leaf spotting is predominantly fungal or bacterial rather than simple nutrient starvation.",
+      "caveats": [
+        "Fertilizing will not cure fungal leaf spots and excess fertilizer may accelerate foliage vulnerability."
+      ],
+      "next_action": "Prune affected lower leaves, avoid overhead splashing, improve airflow, and consult local extension pathology diagnostics.",
+      "source_ids": ["psu-health"]
+    },
+    "wilting": {
+      "status": "investigate_stress",
+      "title": "Visible Wilting — Check Soil Moisture & Vascular Health",
+      "summary": "Plant displays loss of turgor pressure; could be drought, root rot, or vascular wilt.",
+      "rationale": "Wilting occurs when root water uptake fails to match transpiration, either from dry soil or damaged root systems in saturated soil.",
+      "caveats": [
+        "Do NOT fertilize a wilting plant."
+      ],
+      "next_action": "Perform immediate 5 cm soil moisture probe. If wet, suspect root rot; if dry, water deeply at base.",
+      "source_ids": ["psu-health", "umn-watering"]
+    }
+  }
+}

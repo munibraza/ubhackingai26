@@ -588,3 +588,38 @@ The team can demonstrate a **single working walkthrough**: take/upload an iPhone
 15. Adafruit, [5 V-to-3 V I²C level shifter guide](https://learn.adafruit.com/adafruit-qt-5v-to-3v-shifter-breakout/wiring) — a compatible solution when a breakout is not 5 V I²C safe.
 
 **Licensing note:** Each third-party dataset and external image has its own terms. Linking to source articles for evidence does not grant permission to republish their images or full text.
+
+---
+
+## 16. Implementation & Local Quickstart Guide (MVP Working Build)
+
+### Prerequisites
+- Node.js (v18+) & npm
+- Python (3.10+)
+
+### Running the Application Locally
+
+#### 1. Backend Service (FastAPI)
+```bash
+# In repository root:
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r backend/requirements.txt
+uvicorn backend.app:app --host 0.0.0.0 --port 8000 --reload
+```
+API runs at: `http://localhost:8000` (Docs: `http://localhost:8000/docs`)
+
+#### 2. Frontend Web App (React + Vite + Tailwind)
+```bash
+cd frontend
+npm install
+npm run dev -- --host 0.0.0.0 --port 5173
+```
+Frontend runs at: `http://localhost:5173` (also accessible on phone via local Wi-Fi IP).
+
+#### 3. Running Automated Tests
+```bash
+source .venv/bin/activate
+PYTHONPATH=. pytest -v tests/
+```
+
