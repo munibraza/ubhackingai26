@@ -199,7 +199,7 @@ class ImageAnalysisService:
             soil_text = soil_condition.replace('_', ' ') if soil_condition else "Unknown / not checked"
 
             prompt = f"""
-You are an expert agronomic scientist and multimodal AI assistant for the FolLand AI smart agriculture platform.
+You are an expert agronomic scientist and multimodal AI assistant for the FolLand smart agriculture platform.
 
 You are evaluating a live agricultural/plant observation combining BOTH:
 1. The uploaded camera image

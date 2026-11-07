@@ -52,7 +52,7 @@ class DecisionEngine:
 
         # Build comprehensive scientific summary
         summary = (
-            f"FolLand AI Decision Summary: Evaluated {crop.capitalize()} "
+            f"FolLand Decision Summary: Evaluated {crop.capitalize()} "
             f"with visual maturity stage '{visual.stage_label}'. "
             f"Physical soil status: '{soil_condition.replace('_', ' ')}'. "
             f"Ambient context: {sensors.air_temperature_c or 'N/A'}°C, {sensors.air_relative_humidity_pct or 'N/A'}% RH (data mode: {sensors.data_mode}). "

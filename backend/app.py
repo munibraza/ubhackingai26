@@ -13,7 +13,7 @@ from backend.services.image_analysis import ImageAnalysisService
 from backend.services.decision_engine import DecisionEngine
 
 app = FastAPI(
-    title="FolLand AI API",
+    title="FolLand API",
     description="Multimodal Smart Agriculture Decision Support Assistant API",
     version="1.0.0"
 )
@@ -32,7 +32,7 @@ app.add_middleware(
 async def health_check():
     return {
         "status": "healthy",
-        "app": "FolLand AI",
+        "app": "FolLand",
         "version": "1.0.0",
         "sensor_mode": "simulated",
         "supported_crops": ["tomato"],

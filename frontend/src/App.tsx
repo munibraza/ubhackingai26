@@ -1,241 +1,95 @@
-import React, { useState, useEffect, useRef } from 'react';
-import {
-  SensorReading,
-  WeatherSummary,
-  AnalysisResponse,
-} from './types';
-import {
-  fetchLatestSensors,
-  fetchWeather,
-  submitPlantAnalysis,
-} from './services/api';
-import { Navbar } from './components/Navbar';
-import { SensorDashboard } from './components/SensorDashboard';
-import { WeatherCard } from './components/WeatherCard';
-import { PlantAnalysisForm } from './components/PlantAnalysisForm';
-import { RecommendationCards } from './components/RecommendationCards';
-import { KnowledgeModal } from './components/KnowledgeModal';
-import {
-  Sprout,
-  ArrowDown,
-  ShieldCheck,
-  Cpu,
-  Leaf
-} from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { ArrowDown, ArrowRight, Camera, Check, ChevronDown, CloudSun, Droplets, Leaf, LoaderCircle, MapPin, RefreshCw, ScanLine, Settings2, Sparkles, Sprout, Sun, Thermometer, X } from 'lucide-react';
+import { fetchLatestSensors, fetchWeather, submitPlantAnalysis } from './services/api';
+import type { AnalysisResponse, SensorReading, WeatherSummary } from './types';
 
-export const App: React.FC = () => {
-  // Sensor State
+const soilOptions = [
+  { value: 'unknown', title: "I haven't checked", desc: 'We’ll guide you' },
+  { value: 'dry_at_5cm', title: 'Dry', desc: 'Feels dry below the surface' },
+  { value: 'moist', title: 'Moist', desc: 'Feels slightly damp' },
+  { value: 'wet', title: 'Very wet', desc: 'Feels saturated' },
+];
+
+function App() {
   const [sensors, setSensors] = useState<SensorReading | null>(null);
-  const [sensorsLoading, setSensorsLoading] = useState(false);
-  const [simulateDisconnected, setSimulateDisconnected] = useState(false);
-
-  // Weather State
   const [weather, setWeather] = useState<WeatherSummary | null>(null);
-  const [weatherLoading, setWeatherLoading] = useState(false);
+  const [weatherError, setWeatherError] = useState(false);
+  const [lat, setLat] = useState('42.8864');
+  const [lon, setLon] = useState('-78.8784');
+  const [location, setLocation] = useState<{lat: number; lon: number} | null>(null);
+  const [file, setFile] = useState<File | null>(null);
+  const [preview, setPreview] = useState<string | null>(null);
+  const [soil, setSoil] = useState('unknown');
+  const [goal, setGoal] = useState('eat_now');
+  const [variety, setVariety] = useState('');
+  const [symptoms, setSymptoms] = useState('none');
+  const [mode, setMode] = useState<'auto' | 'demo'>('auto');
+  const [scenario, setScenario] = useState('red');
+  const [apiKey, setApiKey] = useState('');
+  const [result, setResult] = useState<AnalysisResponse | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const fileRef = useRef<HTMLInputElement>(null);
+  const cameraRef = useRef<HTMLInputElement>(null);
+  const resultRef = useRef<HTMLElement>(null);
 
-  // Analysis State
-  const [analysis, setAnalysis] = useState<AnalysisResponse | null>(null);
-  const [analysisLoading, setAnalysisLoading] = useState(false);
-  const [analysisError, setAnalysisError] = useState<string | null>(null);
-
-  // Modal State
-  const [isKnowledgeOpen, setIsKnowledgeOpen] = useState(false);
-
-  const resultsRef = useRef<HTMLDivElement>(null);
-  const analysisFormRef = useRef<HTMLDivElement>(null);
-
-  // Initial load
+  async function loadWeather(latitude?: number, longitude?: number) {
+    setWeatherError(false);
+    try { setWeather(await fetchWeather(latitude, longitude, latitude === undefined ? undefined : 'Selected location')); }
+    catch { setWeatherError(true); }
+  }
   useEffect(() => {
-    loadSensors(false);
+    fetchLatestSensors().then(setSensors).catch(() => setSensors(null));
     loadWeather();
   }, []);
+  useEffect(() => { if (result) resultRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, [result]);
+  useEffect(() => () => { if (preview) URL.revokeObjectURL(preview); }, [preview]);
 
-  const loadSensors = async (disconnected: boolean = false) => {
-    setSensorsLoading(true);
-    try {
-      const data = await fetchLatestSensors(disconnected);
-      setSensors(data);
-    } catch (err: any) {
-      console.error('Failed to load sensors:', err);
-    } finally {
-      setSensorsLoading(false);
+  function selectFile(selected?: File) {
+    if (!selected) return;
+    if (!selected.type.startsWith('image/') || selected.size > 15 * 1024 * 1024) {
+      setError('Please choose an image smaller than 15 MB.'); return;
     }
-  };
+    setError(''); setFile(selected); setPreview(URL.createObjectURL(selected));
+  }
+  function updateLocation(e: React.FormEvent) {
+    e.preventDefault();
+    const a = Number(lat), b = Number(lon);
+    if (!lat.trim() || !lon.trim() || !Number.isFinite(a) || !Number.isFinite(b) || a < -90 || a > 90 || b < -180 || b > 180) { setWeatherError(true); return; }
+    setLocation({lat: a, lon: b}); loadWeather(a, b);
+  }
+  async function analyze(e: React.FormEvent) {
+    e.preventDefault(); setError('');
+    if (mode === 'auto' && !file) { setError('Add a photo to check your plant, or choose a sample in the demo settings.'); return; }
+    const data = new FormData();
+    if (file) data.append('image', file);
+    data.append('crop', 'tomato'); data.append('soil_condition', soil); data.append('harvest_goal', goal); data.append('leaf_symptoms', symptoms);
+    if (variety.trim()) data.append('variety', variety.trim());
+    if (location) { data.append('latitude', String(location.lat)); data.append('longitude', String(location.lon)); }
+    data.append('demo_scenario', mode === 'demo' ? scenario : 'auto');
+    if (apiKey.trim() && mode === 'auto') data.append('gemini_api_key', apiKey.trim());
+    setLoading(true);
+    try { setResult(await submitPlantAnalysis(data)); }
+    catch (err) { setError(err instanceof Error ? err.message : 'Something went wrong. Please try again.'); }
+    finally { setLoading(false); }
+  }
 
-  const handleToggleDisconnected = () => {
-    const nextState = !simulateDisconnected;
-    setSimulateDisconnected(nextState);
-    loadSensors(nextState);
-  };
-
-  const loadWeather = async (lat?: number, lon?: number, name?: string) => {
-    setWeatherLoading(true);
-    try {
-      const data = await fetchWeather(lat, lon, name);
-      setWeather(data);
-    } catch (err: any) {
-      console.error('Failed to load weather:', err);
-    } finally {
-      setWeatherLoading(false);
-    }
-  };
-
-  const handleAnalysisSubmit = async (formData: FormData) => {
-    setAnalysisLoading(true);
-    setAnalysisError(null);
-    try {
-      const response = await submitPlantAnalysis(formData);
-      setAnalysis(response);
-
-      // Smooth scroll to results
-      setTimeout(() => {
-        resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }, 100);
-    } catch (err: any) {
-      setAnalysisError(err.message || 'An error occurred during agronomic analysis.');
-    } finally {
-      setAnalysisLoading(false);
-    }
-  };
-
-  const scrollToAnalysis = () => {
-    analysisFormRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  };
-
-  return (
-    <div className="min-h-screen bg-cream-50 flex flex-col font-sans">
-      <Navbar
-        onOpenKnowledge={() => setIsKnowledgeOpen(true)}
-        dataMode={sensors?.data_mode || 'simulated'}
-      />
-
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-6 sm:space-y-8">
-        {/* A. Hero & Overview Dashboard */}
-        <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-forest-950 via-forest-900 to-forest-800 text-white p-6 sm:p-10 shadow-xl border border-forest-800">
-          {/* Subtle background decorative shapes */}
-          <div className="absolute top-0 right-0 -mr-16 -mt-16 w-64 h-64 rounded-full bg-lime-bright/10 blur-3xl pointer-events-none"></div>
-          <div className="absolute bottom-0 left-1/3 -mb-16 w-80 h-80 rounded-full bg-forest-500/10 blur-3xl pointer-events-none"></div>
-
-          <div className="relative z-10 max-w-3xl">
-            {/* Pill */}
-            <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-forest-800/80 border border-forest-700 text-lime-200 mb-4 shadow-sm">
-              <Leaf className="w-3.5 h-3.5 text-lime-bright" />
-              <span>Pilot Crop: Tomato (Solanum lycopersicum)</span>
-            </div>
-
-            <h1 className="text-3xl sm:text-5xl font-extrabold tracking-tight leading-tight text-white mb-3">
-              Multimodal Decision-Support for Small Growers
-            </h1>
-
-            <p className="text-sm sm:text-base text-emerald-100/90 leading-relaxed mb-6 font-normal">
-              FolLand AI fuses mobile camera images, ambient microclimate sensors (SHT30 & RCWL-1601), and local weather forecasts with peer-reviewed university extension guidance to deliver evidence-backed harvest, watering, and fertilization recommendations.
-            </p>
-
-            {/* Quick Actions & Badges */}
-            <div className="flex flex-wrap items-center gap-3">
-              <button
-                onClick={scrollToAnalysis}
-                className="px-5 py-3 rounded-xl bg-lime-bright hover:bg-lime-400 active:scale-[0.98] text-forest-950 font-extrabold text-xs sm:text-sm tracking-wide flex items-center space-x-2 transition shadow-lg shadow-lime-bright/20"
-              >
-                <span>Analyze Tomato Plant</span>
-                <ArrowDown className="w-4 h-4 text-forest-950" />
-              </button>
-
-              <button
-                onClick={() => setIsKnowledgeOpen(true)}
-                className="px-4 py-3 rounded-xl bg-forest-900/90 hover:bg-forest-800 text-white font-bold text-xs sm:text-sm border border-forest-700/80 transition flex items-center space-x-1.5"
-              >
-                <ShieldCheck className="w-4 h-4 text-lime-bright" />
-                <span>Evidence & Limitations</span>
-              </button>
-            </div>
-          </div>
-        </section>
-
-        {/* B. Sensor Telemetry & Regional Weather Section */}
-        <section className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-sm font-extrabold text-slate-800 uppercase tracking-wider flex items-center space-x-2">
-              <Cpu className="w-4 h-4 text-forest-700" />
-              <span>Live Telemetry & Environmental Context</span>
-            </h2>
-          </div>
-
-          <div className="space-y-4">
-            <SensorDashboard
-              sensors={sensors}
-              loading={sensorsLoading}
-              onRefresh={loadSensors}
-              simulateDisconnected={simulateDisconnected}
-              onToggleDisconnected={handleToggleDisconnected}
-            />
-
-            <WeatherCard
-              weather={weather}
-              loading={weatherLoading}
-              onUpdateLocation={loadWeather}
-            />
-          </div>
-        </section>
-
-        {/* C. Plant Analysis Input Form */}
-        <section ref={analysisFormRef} className="pt-2">
-          <PlantAnalysisForm
-            onSubmit={handleAnalysisSubmit}
-            loading={analysisLoading}
-            error={analysisError}
-          />
-        </section>
-
-        {/* D. Analysis Results Section */}
-        {analysis && (
-          <section ref={resultsRef} className="pt-4 space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight">
-                  Agronomic Analysis & Recommendations
-                </h2>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  ID: <span className="font-mono text-slate-700 font-semibold">{analysis.analysis_id}</span> • Evaluated against University of Minnesota & Penn State Extension criteria.
-                </p>
-              </div>
-            </div>
-
-            <RecommendationCards analysis={analysis} />
-          </section>
-        )}
-      </main>
-
-      {/* Footer */}
-      <footer className="bg-forest-950 text-slate-400 py-8 border-t border-forest-900 mt-12 text-xs">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center space-x-2">
-            <Sprout className="w-4 h-4 text-lime-bright" />
-            <span className="font-bold text-white">FolLand AI</span>
-            <span>— UB Hacking Smart Agriculture Prototype</span>
-          </div>
-
-          <div className="flex items-center space-x-4 text-slate-400 text-[11px]">
-            <span>Initial Crop: Tomato</span>
-            <span>•</span>
-            <button
-              onClick={() => setIsKnowledgeOpen(true)}
-              className="text-emerald-300 hover:underline"
-            >
-              Scientific References
-            </button>
-            <span>•</span>
-            <span>Open-Meteo CC BY 4.0</span>
-          </div>
-        </div>
-      </footer>
-
-      {/* Extension Knowledge Modal */}
-      <KnowledgeModal
-        isOpen={isKnowledgeOpen}
-        onClose={() => setIsKnowledgeOpen(false)}
-      />
-    </div>
-  );
-};
+  return <div className="app-shell">
+    <header className="topbar"><a href="#top" className="brand" aria-label="FolLand home"><span className="brand-mark"><Sprout size={19}/></span><span>FolLand</span></a><nav className="top-nav"><a className="active" href="#check">Plant check</a><a href="#conditions">Conditions</a><a href="#about">Our approach</a></nav><a href="#check" className="top-action">Start a check <ArrowRight size={15}/></a></header>
+    <main id="top" className="main-layout">
+      <section className="hero" aria-labelledby="hero-title"><div className="hero-orb orb-one"/><div className="hero-orb orb-two"/><div className="hero-content"><div className="eyebrow light"><span className="status-dot"/> A LITTLE MORE IN TUNE WITH NATURE</div><h1 id="hero-title">A little care.<br/><em>A lot of growth.</em></h1><p>Get to know your tomato plant better, one simple check at a time.</p><a className="hero-button" href="#check">Check my plant <ArrowRight size={17}/></a><div className="hero-caption"><span className="caption-icon"><Sparkles size={15}/></span><span>Thoughtful guidance, rooted in evidence.</span></div></div><div className="hero-art" aria-hidden="true"><div className="art-ring ring-1"/><div className="art-ring ring-2"/><div className="plant-stem"/><div className="plant-leaf leaf-1"/><div className="plant-leaf leaf-2"/><div className="plant-leaf leaf-3"/><div className="plant-leaf leaf-4"/><div className="plant-fruit fruit-1"/><div className="plant-fruit fruit-2"/><div className="glass-note"><span className="glass-note-icon"><Leaf size={17}/></span><span><strong>Growing together</strong><small>A little attention goes a long way</small></span></div></div><div className="hero-index">01 / YOUR GARDEN COMPANION</div></section>
+      <div className="section-heading" id="conditions"><div><div className="eyebrow">YOUR ENVIRONMENT</div><h2>A glance at your surroundings<span>.</span></h2></div><p>A little context for the bigger picture.</p></div>
+      <section className="context-grid" aria-label="Environmental conditions"><div className="context-card"><div className="context-top"><span className="context-icon warm"><Sun size={19}/></span><span className="context-label">LOCAL WEATHER</span><span className="mini-tag">{weather?.is_fallback ? 'SAMPLE' : weather ? 'FORECAST' : 'LOADING'}</span></div><div className="context-value">{weather?.temperature_c != null ? `${Math.round(weather.temperature_c)}°` : '—'} <small>C</small></div><div className="context-bottom"><span>{weather?.weather_description || (weatherError ? 'Weather unavailable' : 'Getting weather…')}</span><CloudSun size={17}/></div><div className="context-foot"><MapPin size={13}/> {weather?.location_name || 'Buffalo, NY'}</div></div>
+      <div className="context-card"><div className="context-top"><span className="context-icon sage"><Thermometer size={19}/></span><span className="context-label">AIR AROUND YOUR PLANT</span><span className="mini-tag">{sensors?.data_mode === 'live' ? 'LIVE' : sensors?.data_mode === 'simulated' ? 'SIMULATED' : 'UNAVAILABLE'}</span></div><div className="context-value">{sensors?.air_temperature_c != null ? `${sensors.air_temperature_c}°` : '—'} <small>C</small></div><div className="context-bottom"><span>Ambient temperature</span><Thermometer size={17}/></div><div className="context-foot">{sensors?.data_mode === 'simulated' ? 'Sample sensor readings' : sensors?.fresh ? 'Latest sensor reading' : 'No current sensor reading'}</div></div>
+      <div className="context-card"><div className="context-top"><span className="context-icon blue"><Droplets size={19}/></span><span className="context-label">AIR HUMIDITY</span><span className="mini-tag">{sensors?.data_mode === 'simulated' ? 'SIMULATED' : sensors?.data_mode === 'live' ? 'LIVE' : 'UNAVAILABLE'}</span></div><div className="context-value">{sensors?.air_relative_humidity_pct != null ? `${sensors.air_relative_humidity_pct}` : '—'} <small>%</small></div><div className="context-bottom"><span>Relative humidity</span><Droplets size={17}/></div><div className="context-foot">Air humidity is not soil moisture</div></div></section>
+      <details className="location-details"><summary><MapPin size={14}/> Change weather location <ChevronDown size={14}/></summary><form onSubmit={updateLocation} className="location-form"><label>Latitude<input type="number" step="any" value={lat} onChange={e => setLat(e.target.value)}/></label><label>Longitude<input type="number" step="any" value={lon} onChange={e => setLon(e.target.value)}/></label><button className="secondary-button" type="submit"><RefreshCw size={14}/> Update</button></form>{weatherError && <p className="error-text">Check your coordinates or try again.</p>}</details>
+      <section id="check" className="check-section"><div className="check-intro"><div className="eyebrow">LET’S TAKE A CLOSER LOOK</div><h2>Give your plant<br/><em>a moment.</em></h2><p>Share a photo and tell us how the soil feels. We’ll help you decide what to look at next.</p><div className="steps"><div><span>01</span> Add a photo</div><div><span>02</span> Check the soil</div><div><span>03</span> Get thoughtful guidance</div></div><div className="intro-note"><Sprout size={19}/><span>Currently growing with <strong>tomatoes</strong></span></div></div>
+      <form className="check-card" onSubmit={analyze}><div className="form-header"><div><span className="eyebrow">YOUR PLANT CHECK</span><h3>How is your tomato doing?</h3></div><span className="form-pill"><Leaf size={13}/> TOMATO</span></div><div className="form-divider"/><div className="question-line"><span className="question-number">01</span><div><h4>Start with a photo</h4><p>A clear, close photo of the fruit works best.</p></div></div><input ref={cameraRef} className="visually-hidden" type="file" accept="image/*" capture="environment" onChange={e => selectFile(e.target.files?.[0])}/><input ref={fileRef} className="visually-hidden" type="file" accept="image/*" onChange={e => selectFile(e.target.files?.[0])}/>{preview ? <div className="photo-preview"><img src={preview} alt="Your selected plant"/><div><strong>{file?.name}</strong><span>Ready to check</span></div><button type="button" aria-label="Remove photo" onClick={() => {setFile(null); setPreview(null); if(fileRef.current) fileRef.current.value = ''; if(cameraRef.current) cameraRef.current.value = '';}}><X size={18}/></button></div> : <div className="upload-zone"><span className="upload-icon"><Camera size={22}/></span><strong>A little snapshot goes a long way</strong><span>JPG or PNG · up to 15 MB</span><div className="upload-actions"><button type="button" onClick={() => cameraRef.current?.click()}>Take a photo</button><button type="button" onClick={() => fileRef.current?.click()}>Choose a photo</button></div></div>}
+      <div className="question-line soil-question"><span className="question-number">02</span><div><h4>How does the soil feel?</h4><p>Check about 2 inches (5 cm) below the surface.</p></div></div><div className="soil-grid">{soilOptions.map(item => <button key={item.value} type="button" onClick={() => setSoil(item.value)} aria-pressed={soil === item.value} className={`soil-option ${soil === item.value ? 'selected' : ''}`}><span className="soil-check">{soil === item.value && <Check size={12}/>}</span><strong>{item.title}</strong><small>{item.desc}</small></button>)}</div>
+      <p className="analysis-notice">Photo checks use Gemini and send your image to Google. A key must be configured on the server or added under More options.</p><details className="advanced"><summary><Settings2 size={15}/> More options <span>Optional</span><ChevronDown size={15}/></summary><div className="advanced-content"><label>Tomato variety <input value={variety} onChange={e => setVariety(e.target.value)} placeholder="For example, cherry tomato"/></label><label>Harvest goal <select value={goal} onChange={e => setGoal(e.target.value)}><option value="eat_now">Eat fresh</option><option value="store_transport">Store or transport</option></select></label><label>What do the leaves look like? <select value={symptoms} onChange={e => setSymptoms(e.target.value)}><option value="none">No symptoms noticed</option><option value="yellowing">Yellowing</option><option value="browning_spots">Brown spots</option><option value="wilting">Wilting</option></select></label><label>Photo analysis key <input type="password" autoComplete="off" value={apiKey} onChange={e => setApiKey(e.target.value)} placeholder="Optional if configured on server"/></label><p>A Gemini key can also be configured on the server. A key entered here is used for this check and is not saved in your browser.</p><label>Try a sample instead <select value={mode === 'auto' ? 'auto' : scenario} onChange={e => { if(e.target.value === 'auto') setMode('auto'); else { setMode('demo'); setScenario(e.target.value); } }}><option value="auto">Analyze my photo</option><option value="red">Demo: red tomato</option><option value="turning">Demo: turning tomato</option><option value="green">Demo: green tomato</option><option value="uncertain">Demo: uncertain image</option></select></label>{mode === 'demo' && <p>Demo results are simulated and do not analyze your photo.</p>}</div></details>
+      {error && <p className="form-error" role="alert">{error}</p>}<button className="submit-button" type="submit" disabled={loading}>{loading ? <><LoaderCircle className="spin" size={18}/> Preparing your guidance…</> : <>See my plant check <ArrowRight size={18}/></>}</button><p className="form-disclaimer"><Sparkles size={13}/> Guidance to help you observe, not a diagnosis.</p></form></section>
+      {result && <section className="results" ref={resultRef} aria-live="polite"><div className="section-heading"><div><div className="eyebrow">YOUR PLANT CHECK</div><h2>Here’s what we found<span>.</span></h2></div><p>{result.visual_observations.is_simulated ? 'Demo scenario · simulated result' : result.visual_observations.ai_provider ? 'Photo analysis · review the details' : 'Photo analysis unavailable'}</p></div><div className="result-overview"><span className="context-icon sage"><ScanLine size={20}/></span><div><strong>{result.visual_observations.stage_label}</strong><p>{result.visual_observations.observation_notes}</p></div></div><div className="result-grid">{[result.harvest, result.watering, result.fertilizer].map((card, i) => <article className="result-card" key={card.category}><div className="result-card-top"><span className={`context-icon ${['warm','blue','sage'][i]}`}>{i === 0 ? <Sun size={19}/> : i === 1 ? <Droplets size={19}/> : <Leaf size={19}/>}</span><span className="eyebrow">{card.category}</span><span className="result-number">0{i+1}</span></div><h3>{card.title}</h3><p>{card.recommendation}</p><div className="next-step"><span>NEXT STEP</span><p>{card.next_action}</p></div><details><summary>Evidence & things to consider <ChevronDown size={15}/></summary><div className="result-detail"><strong>What informed this</strong>{card.evidence.map((item, index) => <p key={index}><b>{item.type === 'WEATHER_FORECAST' && result.weather_data.is_fallback ? 'Sample weather' : item.label}</b> · {item.type === 'WEATHER_FORECAST' && result.weather_data.is_fallback ? 'SIMULATED WEATHER' : item.type.replace(/_/g,' ')}<br/>{item.type === 'WEATHER_FORECAST' ? 'Daily precipitation totals are available, but are not rolling 24-hour measurements.' : item.detail}</p>)}<strong>Keep in mind</strong>{card.limitations.map((item, index) => <p key={index}>{item}</p>)}{card.references.map(ref => <a key={ref.id} href={ref.url} target="_blank" rel="noreferrer">{ref.title} ↗</a>)}</div></details></article>)}</div><p className="results-note">Your plant is unique. These suggestions are a starting point, and do not replace a soil test or expert advice.</p></section>}
+      <section id="about" className="about-strip"><div className="about-icon"><Sprout size={21}/></div><div><strong>Good care starts with a good question.</strong><p>We show what we know, what we don’t, and where a closer look can help.</p></div><a href="#check">Back to your plant <ArrowDown size={15}/></a></section>
+    </main><footer><span className="footer-brand">FolLand</span><span>Made for the little things that grow.</span><span>Thoughtful growing, every day.</span></footer></div>;
+}
 export default App;

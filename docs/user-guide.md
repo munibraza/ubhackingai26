@@ -1,0 +1,75 @@
+# FolLand user guide
+
+FolLand helps you check a tomato plant using a photo, a manual soil check, weather context, and practical guidance. It is a prototype: its sensor readings are simulated, and its recommendations are not a diagnosis or a substitute for a soil test or local expert.
+
+## 1. Open the website
+
+On the computer running FolLand, open the address shown by the frontend server, normally `http://localhost:5173`. If that port is already in use, use the alternate address shown in the terminal. To use a phone on the same Wi-Fi network, open the server's **Network** address on your phone. The computer must remain running and reachable.
+
+The computer setup and start commands are in the [README](../README.md). If the page loads but the weather or plant check does not work, verify that the backend is also running and that the frontend's `/api` proxy points to it.
+
+## 2. Understand the conditions
+
+The three cards near the top show local weather, air temperature, and air humidity. A badge identifies forecast, simulated, or unavailable data. Weather defaults to Buffalo, New York; an offline fallback uses sample values. Sensor values are currently simulated even if physical sensors are connected.
+
+Air humidity is **not soil moisture**. Use your own soil check for the watering recommendation.
+
+### Change the weather location
+
+1. Open **Change weather location** beneath the conditions cards.
+2. Enter latitude from −90 to 90 and longitude from −180 to 180 in decimal degrees.
+3. Select **Update**. The selected coordinates are also sent with the next plant check.
+
+The dashboard displays the weather service's fallback when the forecast cannot be fetched. The forecast service uses daily precipitation totals; the current backend does not calculate true rolling 24-hour rainfall. Do not use its rainfall numbers as measured rainfall for your plant.
+
+## 3. Check a plant
+
+1. Select **Check my plant** or scroll to **Your plant check**. FolLand currently supports tomato recommendations.
+2. Select **Take a photo** to use a camera where your device supports it, or **Choose a photo** to select an existing image. A clear, well-lit close-up of the tomato fruit works best. The size limit is 15 MB. JPEG or PNG is recommended; HEIC compatibility is not verified. Select the × button beside the preview to remove it.
+3. Check the soil roughly 2 inches (5 cm) below the surface. Choose **Dry**, **Moist**, **Very wet**, or **I haven't checked**. If unsure, choose **I haven't checked**; the app will suggest checking before deciding on water.
+4. Select **See my plant check** and wait for the results.
+
+### Photo analysis setup
+
+Photo analysis requires a Gemini API key, configured by the person running the backend as `GEMINI_API_KEY` in the repository-root `.env` file. Alternatively, open **More options** and enter a key under **Photo analysis key**. A key entered on the page is held in page memory for that session; it is not saved by the redesigned interface. Use a trusted device and network: the local development server uses HTTP.
+
+When photo analysis is used, the uploaded image and accompanying context are sent to Google Gemini. If there is no key, the external service fails, or the image cannot be analyzed, the result will say visual analysis is unavailable. A photo alone cannot establish soil moisture or nutrient levels.
+
+### Optional details
+
+Open **More options** to enter the tomato variety, choose whether you intend to eat the fruit fresh or store it, and report visible leaf symptoms. The current backend may replace a manually reported leaf symptom with the Gemini observation when Gemini returns one. Treat image observations as tentative and check the plant yourself.
+
+## 4. Read the result
+
+The page shows the visual observation followed by three cards:
+
+- **Harvest:** visible maturity stage and a suggested next check. Variety and firmness matter; color alone is not enough.
+- **Watering:** advice based primarily on your soil selection. If the soil is unknown, check it before deciding.
+- **Fertilizer:** cautious guidance on whether more investigation is needed. FolLand does not measure N, P, or K and cannot reliably identify a deficiency from a picture alone.
+
+Each card shows a suggested next step. Open **Evidence & things to consider** to view the inputs, limitations, and links to the cited sources. Review these before acting, especially if the image is unclear or the plant behaves differently than the card suggests.
+
+## 5. Try the demo without a photo or key
+
+1. Open **More options**.
+2. Under **Try a sample instead**, choose a red, turning, green, or uncertain tomato scenario.
+3. Choose a soil condition and select **See my plant check**.
+
+The result is explicitly simulated: the chosen scenario determines the visual stage, and an uploaded photo is not analyzed in this mode. Select **Analyze my photo** to return to photo analysis.
+
+## 6. Troubleshooting
+
+| Problem | What to do |
+|---|---|
+| Page does not open | Check the frontend terminal for its actual local or network address and confirm the server is running. |
+| Phone cannot connect | Connect both devices to the same network, use the computer's network address rather than `localhost`, and check the computer firewall. |
+| Conditions do not load | Check the backend and frontend proxy. Weather may show a labeled sample when the external service is unavailable. |
+| Photo analysis unavailable | Check the Gemini key, internet access, image format, and backend logs. Use JPEG/PNG or the sample mode to continue the demo. |
+| I see simulated sensor values | This is expected: the current repository does not implement the physical serial bridge. |
+| The result is uncertain or seems wrong | Retake a clear photo, check the plant and soil manually, and consult a local extension specialist when needed. |
+
+## 7. Related documentation
+
+- [Setup and project map](../README.md)
+- [Architecture and known implementation limitations](architecture.md)
+- [Original MVP proposal and end-to-end workflow](mvp-proposal.md)

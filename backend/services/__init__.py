@@ -1,1 +1,1 @@
-# Services package for FolLand AI backend
+# Services package for FolLand backend
