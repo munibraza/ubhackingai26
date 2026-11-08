@@ -26,6 +26,10 @@ Open `http://localhost:5173`. On a phone connected to the same network, use `htt
 
 For Gemini image analysis, set `GEMINI_API_KEY` in a root `.env` file (see [.env.example](.env.example)) or enter a key in the app. Without a key, use a labeled demo scenario to exercise the recommendation rules. Keys entered in the UI are held only for the current page session; use a trusted device and network. Photos sent for analysis are sent to Google Gemini.
 
+## AgriVision AI (3D web app)
+
+The [`agrivision/`](agrivision/README.md) folder contains a Next.js + Three.js front end with a 3D farm digital twin, sensor dashboard, photo analysis, weather intelligence and alerts. It runs standalone in Demo Mode and can use this FastAPI backend for AI photo analysis. See [agrivision/README.md](agrivision/README.md).
+
 ## Verify
 
 ```bash
